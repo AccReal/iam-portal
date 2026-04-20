@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Корпоративная почта</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #f5f5f5;
+            display: flex;
+            height: 100vh;
+        }
+
+        .sidebar {
+            width: 250px;
+            background: #1e293b;
+            color: white;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .logo {
+            font-size: 20px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .compose-btn {
+            margin: 20px;
+            padding: 12px;
+            background: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .compose-btn:hover {
+            background: #2563eb;
+        }
+
+        .nav-menu {
+            flex: 1;
+            padding: 10px;
+        }
+
+        .nav-item {
+            padding: 12px 15px;
+            margin-bottom: 5px;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background 0.2s;
+        }
+
+        .nav-item:hover {
+            background: rgba(255,255,255,0.1);
+        }
+
+        .nav-item.active {
+            background: rgba(59,130,246,0.3);
+        }
+
+        .badge {
+            background: #3b82f6;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .user-section {
+            padding: 20px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #3b82f6;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+        }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: white;
+            padding: 20px 30px;
+            border-bottom: 1px solid #e5e7eb;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .search-box {
+            flex: 1;
+            max-width: 500px;
+            position: relative;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 10px 15px 10px 40px;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #9ca3af;
+        }
+
+        .mail-list {
+            flex: 1;
+            overflow-y: auto;
+            background: white;
+        }
+
+        .mail-item {
+            padding: 20px 30px;
+            border-bottom: 1px solid #e5e7eb;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .mail-item:hover {
+            background: #f9fafb;
+        }
+
+        .mail-item.unread {
+            background: #eff6ff;
+        }
+
+        .mail-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .mail-from {
+            font-weight: 600;
+            color: #1f2937;
+        }
+
+        .mail-time {
+            color: #6b7280;
+            font-size: 14px;
+        }
+
+        .mail-subject {
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 5px;
+        }
+
+        .mail-preview {
+            color: #6b7280;
+            font-size: 14px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .mail-tags {
+            margin-top: 8px;
+            display: flex;
+            gap: 8px;
+        }
+
+        .tag {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .tag-important {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .tag-work {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                    <polyline points="22,6 12,13 2,6"></polyline>
+                </svg>
+                Почта
+            </div>
+        </div>
+
+        <button class="compose-btn">✉️ Написать письмо</button>
+
+        <div class="nav-menu">
+            <div class="nav-item active">
+                <span>📥 Входящие</span>
+                <span class="badge">12</span>
+            </div>
+            <div class="nav-item">
+                <span>⭐ Важные</span>
+                <span class="badge">3</span>
+            </div>
+            <div class="nav-item">
+                <span>📤 Отправленные</span>
+            </div>
+            <div class="nav-item">
+                <span>📝 Черновики</span>
+                <span class="badge">2</span>
+            </div>
+            <div class="nav-item">
+                <span>🗑️ Корзина</span>
+            </div>
+        </div>
+
+        <div class="user-section">
+            <div class="user-avatar" id="userAvatar">A</div>
+            <div style="flex: 1; min-width: 0;">
+                <div id="userName" style="font-weight: 600; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Загрузка...</div>
+                <div id="userEmail" style="font-size: 12px; opacity: 0.7; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">email</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="header">
+            <div class="search-box">
+                <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <path d="m21 21-4.35-4.35"></path>
+                </svg>
+                <input type="text" placeholder="Поиск по письмам...">
+            </div>
+        </div>
+
+        <div class="mail-list">
+            <div class="mail-item unread">
+                <div class="mail-header">
+                    <div class="mail-from">Иванов Сергей</div>
+                    <div class="mail-time">10:30</div>
+                </div>
+                <div class="mail-subject">Отчёт по продажам за квартал</div>
+                <div class="mail-preview">Добрый день! Прикрепляю отчёт по продажам за последний квартал. Показатели выросли на 15%...</div>
+                <div class="mail-tags">
+                    <span class="tag tag-important">Важное</span>
+                    <span class="tag tag-work">Работа</span>
+                </div>
+            </div>
+
+            <div class="mail-item unread">
+                <div class="mail-header">
+                    <div class="mail-from">Петрова Анна</div>
+                    <div class="mail-time">09:15</div>
+                </div>
+                <div class="mail-subject">Встреча с клиентом перенесена</div>
+                <div class="mail-preview">Здравствуйте! Клиент просит перенести встречу с 15:00 на 17:00. Подтвердите, пожалуйста...</div>
+            </div>
+
+            <div class="mail-item">
+                <div class="mail-header">
+                    <div class="mail-from">HR Отдел</div>
+                    <div class="mail-time">Вчера</div>
+                </div>
+                <div class="mail-subject">Корпоративное мероприятие 25 апреля</div>
+                <div class="mail-preview">Уважаемые коллеги! Приглашаем вас на корпоративное мероприятие, которое состоится 25 апреля...</div>
+            </div>
+
+            <div class="mail-item">
+                <div class="mail-header">
+                    <div class="mail-from">Смирнов Дмитрий</div>
+                    <div class="mail-time">Вчера</div>
+                </div>
+                <div class="mail-subject">Согласование договора</div>
+                <div class="mail-preview">Добрый день! Прошу согласовать договор с новым поставщиком. Все документы во вложении...</div>
+                <div class="mail-tags">
+                    <span class="tag tag-important">Важное</span>
+                </div>
+            </div>
+
+            <div class="mail-item">
+                <div class="mail-header">
+                    <div class="mail-from">IT Поддержка</div>
+                    <div class="mail-time">2 дня назад</div>
+                </div>
+                <div class="mail-subject">Плановое обновление системы</div>
+                <div class="mail-preview">Уважаемые пользователи! 20 апреля с 02:00 до 04:00 будет проведено плановое обновление...</div>
+            </div>
+
+            <div class="mail-item">
+                <div class="mail-header">
+                    <div class="mail-from">Козлова Елена</div>
+                    <div class="mail-time">3 дня назад</div>
+                </div>
+                <div class="mail-subject">Вопрос по проекту</div>
+                <div class="mail-preview">Здравствуйте! У меня возник вопрос по текущему проекту. Можем ли мы созвониться сегодня...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { ipcRenderer } = require('electron');
+
+        ipcRenderer.on('user-info', (event, user) => {
+            document.getElementById('userName').textContent = user.full_name || user.email;
+            document.getElementById('userEmail').textContent = user.email;
+            
+            const initials = (user.full_name || user.email)
+                .split(' ')
+                .map(n => n[0])
+                .join('')
+                .toUpperCase()
+                .substring(0, 2);
+            document.getElementById('userAvatar').textContent = initials;
+        });
+    </script>
+</body>
+</html>

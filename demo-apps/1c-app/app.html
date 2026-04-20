@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>1С:Бухгалтерия</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f0f0f0;
+        }
+
+        .toolbar {
+            background: linear-gradient(to bottom, #ffffff 0%, #e8e8e8 100%);
+            border-bottom: 1px solid #c0c0c0;
+            padding: 8px 15px;
+            display: flex;
+            gap: 5px;
+            align-items: center;
+        }
+
+        .toolbar-btn {
+            padding: 6px 12px;
+            background: linear-gradient(to bottom, #ffffff 0%, #f0f0f0 100%);
+            border: 1px solid #adadad;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .toolbar-btn:hover {
+            background: linear-gradient(to bottom, #f8f8f8 0%, #e8e8e8 100%);
+        }
+
+        .toolbar-separator {
+            width: 1px;
+            height: 24px;
+            background: #c0c0c0;
+            margin: 0 5px;
+        }
+
+        .header {
+            background: #003d7a;
+            color: white;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            background: rgba(255,255,255,0.15);
+            padding: 8px 15px;
+            border-radius: 4px;
+        }
+
+        .container {
+            display: flex;
+            height: calc(100vh - 120px);
+        }
+
+        .sidebar {
+            width: 280px;
+            background: white;
+            border-right: 1px solid #d0d0d0;
+            overflow-y: auto;
+        }
+
+        .nav-section {
+            padding: 15px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .nav-title {
+            font-weight: 600;
+            color: #003d7a;
+            margin-bottom: 10px;
+            font-size: 13px;
+        }
+
+        .nav-item {
+            padding: 8px 12px;
+            margin-bottom: 3px;
+            cursor: pointer;
+            border-radius: 3px;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .nav-item:hover {
+            background: #e8f4ff;
+        }
+
+        .nav-item.active {
+            background: #cce5ff;
+            font-weight: 600;
+        }
+
+        .main-content {
+            flex: 1;
+            background: white;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .content-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #003d7a;
+        }
+
+        .content-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #003d7a;
+        }
+
+        .period-selector {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            font-size: 13px;
+        }
+
+        .period-selector select {
+            padding: 5px 10px;
+            border: 1px solid #c0c0c0;
+            border-radius: 3px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .stat-card {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 15px;
+            border-radius: 4px;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 8px;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #003d7a;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            margin-top: 20px;
+        }
+
+        .data-table th {
+            background: #f0f0f0;
+            padding: 10px;
+            text-align: left;
+            border: 1px solid #d0d0d0;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .data-table td {
+            padding: 8px 10px;
+            border: 1px solid #d0d0d0;
+        }
+
+        .data-table tr:hover {
+            background: #f8f9fa;
+        }
+
+        .amount-positive {
+            color: #28a745;
+            font-weight: 600;
+        }
+
+        .amount-negative {
+            color: #dc3545;
+            font-weight: 600;
+        }
+
+        .status-bar {
+            background: #f0f0f0;
+            border-top: 1px solid #c0c0c0;
+            padding: 5px 15px;
+            font-size: 12px;
+            color: #666;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
+            </svg>
+            1С:Бухгалтерия 8.3
+        </div>
+        <div class="user-info">
+            <div>
+                <div id="userName" style="font-weight: 600; font-size: 14px;">Загрузка...</div>
+                <div id="userRole" style="font-size: 11px; opacity: 0.9;">Роль</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="toolbar">
+        <button class="toolbar-btn">📄 Создать</button>
+        <button class="toolbar-btn">✏️ Изменить</button>
+        <button class="toolbar-btn">🗑️ Удалить</button>
+        <div class="toolbar-separator"></div>
+        <button class="toolbar-btn">📊 Отчёты</button>
+        <button class="toolbar-btn">🔍 Поиск</button>
+        <button class="toolbar-btn">🖨️ Печать</button>
+        <div class="toolbar-separator"></div>
+        <button class="toolbar-btn">⚙️ Настройки</button>
+    </div>
+
+    <div class="container">
+        <div class="sidebar">
+            <div class="nav-section">
+                <div class="nav-title">ДОКУМЕНТЫ</div>
+                <div class="nav-item active">📝 Банковские выписки</div>
+                <div class="nav-item">💰 Платёжные поручения</div>
+                <div class="nav-item">🧾 Счета-фактуры</div>
+                <div class="nav-item">📋 Накладные</div>
+                <div class="nav-item">💳 Кассовые ордера</div>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-title">СПРАВОЧНИКИ</div>
+                <div class="nav-item">👥 Контрагенты</div>
+                <div class="nav-item">📦 Номенклатура</div>
+                <div class="nav-item">🏦 Банковские счета</div>
+                <div class="nav-item">💼 Договоры</div>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-title">ОТЧЁТЫ</div>
+                <div class="nav-item">📊 Оборотно-сальдовая ведомость</div>
+                <div class="nav-item">📈 Анализ счёта</div>
+                <div class="nav-item">💹 Баланс</div>
+                <div class="nav-item">📉 Отчёт о прибылях и убытках</div>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="content-header">
+                <div class="content-title">Банковские выписки</div>
+                <div class="period-selector">
+                    <span>Период:</span>
+                    <select>
+                        <option>Апрель 2026</option>
+                        <option>Март 2026</option>
+                        <option>Февраль 2026</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-label">Остаток на начало</div>
+                    <div class="stat-value">12 450 000 ₽</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Поступления</div>
+                    <div class="stat-value amount-positive">+8 920 000 ₽</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Списания</div>
+                    <div class="stat-value amount-negative">-6 340 000 ₽</div>
+                </div>
+            </div>
+
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Дата</th>
+                        <th>Документ</th>
+                        <th>Контрагент</th>
+                        <th>Назначение платежа</th>
+                        <th>Приход</th>
+                        <th>Расход</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>17.04.2026</td>
+                        <td>ПП №000145</td>
+                        <td>ООО "Техносервис"</td>
+                        <td>Оплата по договору №ТС-2026-04</td>
+                        <td class="amount-positive">2 450 000 ₽</td>
+                        <td>-</td>
+                    </tr>
+                    <tr>
+                        <td>16.04.2026</td>
+                        <td>ПП №000144</td>
+                        <td>ЗАО "Стройинвест"</td>
+                        <td>Аванс по договору №СИ-125</td>
+                        <td>-</td>
+                        <td class="amount-negative">1 800 000 ₽</td>
+                    </tr>
+                    <tr>
+                        <td>15.04.2026</td>
+                        <td>ПП №000143</td>
+                        <td>ООО "МедТех"</td>
+                        <td>Оплата за медицинское оборудование</td>
+                        <td class="amount-positive">1 200 000 ₽</td>
+                        <td>-</td>
+                    </tr>
+                    <tr>
+                        <td>14.04.2026</td>
+                        <td>ПП №000142</td>
+                        <td>ИП Смирнов Д.А.</td>
+                        <td>Оплата услуг по договору</td>
+                        <td>-</td>
+                        <td class="amount-negative">890 000 ₽</td>
+                    </tr>
+                    <tr>
+                        <td>13.04.2026</td>
+                        <td>ПП №000141</td>
+                        <td>ООО "ЛогистикПро"</td>
+                        <td>Транспортные услуги</td>
+                        <td>-</td>
+                        <td class="amount-negative">650 000 ₽</td>
+                    </tr>
+                    <tr>
+                        <td>12.04.2026</td>
+                        <td>ПП №000140</td>
+                        <td>ООО "Поставщик+"</td>
+                        <td>Оплата за товар по накладной №125</td>
+                        <td>-</td>
+                        <td class="amount-negative">3 000 000 ₽</td>
+                    </tr>
+                    <tr>
+                        <td>11.04.2026</td>
+                        <td>ПП №000139</td>
+                        <td>ООО "Клиент-А"</td>
+                        <td>Оплата по счёту №456</td>
+                        <td class="amount-positive">5 270 000 ₽</td>
+                        <td>-</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div style="margin-top: 20px; padding: 15px; background: #e8f4ff; border-left: 4px solid #003d7a; border-radius: 4px;">
+                <strong>Права доступа:</strong> <span id="permissions">Загрузка...</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="status-bar">
+        <span id="statusText">Готово | База: Компания ООО "Рога и Копыта" | Пользователь: <span id="statusUser">-</span></span>
+    </div>
+
+    <script>
+        const { ipcRenderer } = require('electron');
+
+        ipcRenderer.on('user-info', (event, user) => {
+            document.getElementById('userName').textContent = user.full_name || user.email;
+            document.getElementById('userRole').textContent = user.role?.name || 'Пользователь';
+            document.getElementById('statusUser').textContent = user.full_name || user.email;
+
+            const permissions = [];
+            if (user.permissions?.can_read) permissions.push('Чтение');
+            if (user.permissions?.can_write) permissions.push('Запись');
+            if (user.permissions?.can_export) permissions.push('Экспорт');
+            
+            document.getElementById('permissions').textContent = permissions.join(', ') || 'Нет прав';
+        });
+    </script>
+</body>
+</html>

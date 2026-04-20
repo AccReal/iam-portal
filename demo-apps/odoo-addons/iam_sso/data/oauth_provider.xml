@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!--
+        IAM Portal OAuth2 provider.
+        client_secret: vB6jZ5-8lXQa_iJPzIj3xwqgWYToZqKXqUcLnmVG8_E
+        Odoo uses implicit flow (response_type=token) → IAM returns access_token
+        in the redirect fragment.  Odoo then calls validation_endpoint with
+        ?access_token=<token> to fetch user claims.
+    -->
+    <record id="provider_iam_portal" model="auth.oauth.provider">
+        <field name="name">IAM Portal</field>
+        <field name="client_id">odoo</field>
+        <!-- Authorization endpoint — browser-side redirect -->
+        <field name="auth_endpoint">http://localhost:8000/oauth/authorize</field>
+        <!-- Userinfo / validation endpoint — server-side call with access_token -->
+        <field name="validation_endpoint">http://backend:8000/oauth/userinfo</field>
+        <field name="scope">openid profile email roles</field>
+        <field name="enabled" eval="True"/>
+        <field name="body">Войти через IAM Portal</field>
+        <field name="css_class">fa fa-sign-in text-primary</field>
+        <field name="sequence">1</field>
+    </record>
+</odoo>

@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CRM Система - Доступ к информационной базе</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f0f0f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .login-window {
+            background: #e8e8e8;
+            border: 1px solid #999;
+            box-shadow: 2px 2px 8px rgba(0,0,0,0.3);
+            width: 100%;
+            max-width: 520px;
+        }
+
+        .title-bar {
+            background: linear-gradient(to bottom, #4a90e2 0%, #357abd 100%);
+            color: white;
+            padding: 8px 12px;
+            font-size: 13px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #2d5a8f;
+        }
+
+        .close-btn {
+            background: #d9534f;
+            border: none;
+            color: white;
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            font-size: 14px;
+            line-height: 1;
+            border-radius: 2px;
+        }
+
+        .close-btn:hover {
+            background: #c9302c;
+        }
+
+        .content {
+            padding: 25px;
+            background: #f5f5f5;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        .app-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .company-name {
+            font-size: 14px;
+            color: #666;
+        }
+
+        .form-group {
+            margin-bottom: 18px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 6px;
+            color: #333;
+            font-size: 13px;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 8px 10px;
+            border: 1px solid #bbb;
+            background: white;
+            font-size: 14px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: #4a90e2;
+        }
+
+        .message-box {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            padding: 12px;
+            margin: 15px 0;
+            font-size: 13px;
+            color: #856404;
+            display: none;
+        }
+
+        .message-box.show {
+            display: block;
+        }
+
+        .message-box.error {
+            background: #f8d7da;
+            border-color: #f5c6cb;
+            color: #721c24;
+        }
+
+        .message-box.info {
+            background: #d1ecf1;
+            border-color: #bee5eb;
+            color: #0c5460;
+        }
+
+        .buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 25px;
+        }
+
+        button {
+            padding: 8px 30px;
+            font-size: 13px;
+            cursor: pointer;
+            border: 1px solid #999;
+            background: linear-gradient(to bottom, #f8f8f8 0%, #e0e0e0 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        button:hover {
+            background: linear-gradient(to bottom, #fff 0%, #e8e8e8 100%);
+        }
+
+        button:active {
+            background: #d0d0d0;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 11px;
+            color: #999;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-window">
+        <div class="title-bar">
+            <span>CRM Система - Доступ к информационной базе</span>
+            <button class="close-btn" onclick="window.close()">×</button>
+        </div>
+
+        <div class="content">
+            <div class="header">
+                <div class="app-title">CRM Система</div>
+                <div class="company-name">Управление взаимоотношениями с клиентами</div>
+            </div>
+
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="username">Пользователь:</label>
+                    <input 
+                        type="text" 
+                        id="username" 
+                        name="username" 
+                        placeholder="Иванов И.И."
+                        autocomplete="username"
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Пароль:</label>
+                    <input 
+                        type="password" 
+                        id="password" 
+                        name="password" 
+                        placeholder="**********"
+                        autocomplete="current-password"
+                    >
+                </div>
+
+                <div class="message-box info show" id="messageBox">
+                    ⓘ Для доступа к корпоративным приложениям необходимо авторизоваться через IAM System
+                </div>
+
+                <div class="buttons">
+                    <button type="submit" id="loginBtn">OK</button>
+                    <button type="button" onclick="window.close()">Отмена</button>
+                </div>
+            </form>
+
+            <div class="footer">
+                © 2024 Корпоративная информационная система
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { ipcRenderer } = require('electron');
+
+        const form = document.getElementById('loginForm');
+        const usernameInput = document.getElementById('username');
+        const passwordInput = document.getElementById('password');
+        const loginBtn = document.getElementById('loginBtn');
+        const messageBox = document.getElementById('messageBox');
+
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+
+            const username = usernameInput.value.trim();
+            const password = passwordInput.value;
+
+            if (!username || !password) {
+                showMessage('Пожалуйста, заполните все поля', 'error');
+                return;
+            }
+
+            // Show message about IAM System
+            showMessage('Для доступа необходимо авторизоваться через IAM System. Откройте приложение "IAM System" на рабочем столе.', 'info');
+            
+            // Notify main process
+            ipcRenderer.send('show-iam-required');
+        });
+
+        function showMessage(text, type = 'info') {
+            messageBox.textContent = text;
+            messageBox.className = 'message-box show ' + type;
+        }
+
+        // Focus username input on load
+        window.addEventListener('load', () => {
+            usernameInput.focus();
+        });
+    </script>
+</body>
+</html>

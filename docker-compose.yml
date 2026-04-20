@@ -1,0 +1,196 @@
+services:
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: iam_db
+      POSTGRES_USER: iam_user
+      POSTGRES_PASSWORD: iam_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U iam_user -d iam_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: ./backend
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c 'import httpx; httpx.get(\"http://localhost:8000/health\")' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  celery-worker:
+    build: ./backend
+    command: celery -A app.tasks.celery_app worker --loglevel=info
+    volumes:
+      - ./backend:/app
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  celery-beat:
+    build: ./backend
+    command: celery -A app.tasks.celery_app beat --loglevel=info
+    volumes:
+      - ./backend:/app
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  frontend:
+    build: ./frontend
+    command: npm run dev -- --host 0.0.0.0
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+
+  # ---------------------------------------------------------------------------
+  # Phase 3: Relying Parties for SSO demo
+  # ---------------------------------------------------------------------------
+
+  # Odoo 17 — connect via: Settings → OAuth Providers
+  # client_id: odoo  |  redirect_uri: http://localhost:8069/web/login
+  # Authorization URL: http://localhost:8000/oauth/authorize
+  # Token URL:         http://localhost:8000/oauth/token
+  # JWKS URL:          http://localhost:8000/.well-known/jwks.json
+  odoo:
+    image: odoo:17
+    depends_on:
+      odoo-db:
+        condition: service_healthy
+    ports:
+      - "8069:8069"
+    volumes:
+      - odoo-data:/var/lib/odoo
+      - ./demo-apps/odoo-addons:/mnt/extra-addons
+    environment:
+      HOST: odoo-db
+      USER: odoo
+      PASSWORD: odoo_password
+    command: --without-demo=all -d odoo -i iam_sso
+
+  odoo-db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: odoo
+      POSTGRES_PASSWORD: odoo_password
+    volumes:
+      - odoo-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U odoo"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # nginx — HTTPS reverse proxy for Nextcloud (user_oidc requires HTTPS)
+  # Nextcloud available at https://localhost:8443
+  # Self-signed cert is generated on first start inside the container.
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "8443:443"
+      - "8444:8444"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - nginx-certs:/etc/nginx/certs
+    depends_on:
+      - nextcloud
+    entrypoint:
+      - sh
+      - -c
+      - |
+        apk add --no-cache openssl
+        mkdir -p /etc/nginx/certs
+        if [ ! -f /etc/nginx/certs/cert.crt ]; then
+          openssl req -x509 -nodes -days 3650 -newkey rsa:2048 -keyout /etc/nginx/certs/cert.key -out /etc/nginx/certs/cert.crt -subj '/C=RU/O=IAM Portal/CN=localhost' -addext 'subjectAltName=DNS:localhost,IP:127.0.0.1'
+        fi
+        exec nginx -g 'daemon off;'
+
+  # Nextcloud 28 — connect via: Apps → OpenID Connect user backend (user_oidc)
+  # Access via HTTPS: https://localhost:8443
+  # Provider URL:      http://localhost:8000
+  # client_id: nextcloud  |  client_secret: NMCvIRGI9mS3z60fRWAFQCPPHghthRWM4B73jUfk8Gg
+  # Mapping: sub → UID, email, displayName → preferred_username
+  nextcloud:
+    image: nextcloud:28
+    depends_on:
+      nextcloud-db:
+        condition: service_healthy
+    ports:
+      - "8080:80"
+    volumes:
+      - nextcloud-data:/var/www/html
+    environment:
+      POSTGRES_HOST: nextcloud-db
+      POSTGRES_DB: nextcloud
+      POSTGRES_USER: nextcloud
+      POSTGRES_PASSWORD: nextcloud_password
+      NEXTCLOUD_ADMIN_USER: admin
+      NEXTCLOUD_ADMIN_PASSWORD: admin_password
+      NEXTCLOUD_TRUSTED_DOMAINS: localhost nextcloud
+      OVERWRITEPROTOCOL: https
+      OVERWRITEHOST: localhost:8443
+      OVERWRITECLIURL: https://localhost:8443
+      TRUSTED_PROXIES: nginx
+
+  nextcloud-db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: nextcloud
+      POSTGRES_USER: nextcloud
+      POSTGRES_PASSWORD: nextcloud_password
+    volumes:
+      - nextcloud-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nextcloud"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgdata:
+  odoo-data:
+  odoo-pgdata:
+  nextcloud-data:
+  nextcloud-pgdata:
+  nginx-certs:
