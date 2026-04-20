@@ -1,0 +1,32 @@
+{
+  "name": "iam-system",
+  "version": "1.0.0",
+  "description": "IAM System - Identity and Access Management",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder",
+    "build:win": "electron-builder --win"
+  },
+  "author": "Your Company",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.1"
+  },
+  "build": {
+    "appId": "com.company.iam-system",
+    "productName": "IAM System",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "**/*",
+      "../demo-apps/shared/**/*"
+    ],
+    "win": {
+      "target": "dir",
+      "icon": "icon.png"
+    }
+  }
+}

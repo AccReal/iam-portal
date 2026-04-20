@@ -1,0 +1,228 @@
+/* Responsive Design Styles */
+
+/* Mobile devices (< 768px) */
+@media (max-width: 767px) {
+  /* Hide sidebar by default on mobile */
+  .ant-layout-sider {
+    position: fixed !important;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    z-index: 1000;
+    transition: transform 0.3s ease;
+  }
+
+  .ant-layout-sider.mobile-hidden {
+    transform: translateX(-100%);
+  }
+
+  /* Adjust content for mobile */
+  .ant-layout-content {
+    margin: 12px !important;
+    padding: 16px !important;
+  }
+
+  /* Stack header items vertically if needed */
+  .ant-layout-header {
+    padding: 0 12px !important;
+    flex-wrap: wrap;
+  }
+
+  /* Make tables scrollable */
+  .ant-table-wrapper {
+    overflow-x: auto;
+  }
+
+  /* Hide non-priority table columns */
+  .ant-table .hide-mobile {
+    display: none !important;
+  }
+
+  /* Stack form items vertically */
+  .ant-form-item {
+    margin-bottom: 16px;
+  }
+
+  /* Full width buttons on mobile */
+  .mobile-full-width {
+    width: 100% !important;
+  }
+
+  /* Reduce card padding */
+  .ant-card-body {
+    padding: 12px !important;
+  }
+
+  /* Smaller font sizes */
+  .ant-card-head-title {
+    font-size: 16px !important;
+  }
+
+  /* Stack statistics cards */
+  .stats-row {
+    flex-direction: column !important;
+  }
+
+  .stats-card {
+    margin-bottom: 12px !important;
+  }
+
+  /* Adjust modal width */
+  .ant-modal {
+    max-width: 95% !important;
+    margin: 8px auto !important;
+  }
+
+  /* Hamburger menu button */
+  .mobile-menu-toggle {
+    display: block !important;
+    position: fixed;
+    top: 16px;
+    left: 16px;
+    z-index: 1001;
+    background: #001529;
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+
+  /* Overlay for mobile menu */
+  .mobile-overlay {
+    display: block !important;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 999;
+  }
+}
+
+/* Tablet devices (768px - 1024px) */
+@media (min-width: 768px) and (max-width: 1024px) {
+  /* Adjust content padding */
+  .ant-layout-content {
+    margin: 16px !important;
+    padding: 20px !important;
+  }
+
+  /* Two-column layout for forms */
+  .tablet-two-column {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  /* Adjust table font size */
+  .ant-table {
+    font-size: 13px;
+  }
+
+  /* Smaller sidebar */
+  .ant-layout-sider {
+    max-width: 180px !important;
+    min-width: 180px !important;
+  }
+
+  /* Hide some table columns on tablet */
+  .ant-table .hide-tablet {
+    display: none !important;
+  }
+}
+
+/* Desktop (> 1024px) */
+@media (min-width: 1025px) {
+  .mobile-menu-toggle {
+    display: none !important;
+  }
+
+  .mobile-overlay {
+    display: none !important;
+  }
+}
+
+/* Loading overlay */
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+/* Error message styles */
+.error-message {
+  padding: 12px 16px;
+  background: #fff2f0;
+  border: 1px solid #ffccc7;
+  border-radius: 4px;
+  color: #cf1322;
+  margin-bottom: 16px;
+}
+
+.error-message-with-retry {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* Form validation styles */
+.ant-form-item-has-error .ant-input,
+.ant-form-item-has-error .ant-select-selector {
+  border-color: #ff4d4f !important;
+}
+
+.ant-form-item-explain-error {
+  color: #ff4d4f;
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+/* Responsive grid for dashboard */
+.dashboard-grid {
+  display: grid;
+  gap: 16px;
+}
+
+@media (max-width: 767px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1024px) {
+  .dashboard-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1025px) {
+  .dashboard-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* Utility classes */
+.text-center {
+  text-align: center;
+}
+
+.mt-16 {
+  margin-top: 16px;
+}
+
+.mb-16 {
+  margin-bottom: 16px;
+}
+
+.p-16 {
+  padding: 16px;
+}

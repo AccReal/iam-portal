@@ -1,0 +1,15 @@
+{
+  "name": "demo-apps",
+  "version": "1.0.0",
+  "description": "Demo applications for IAM System SSO",
+  "scripts": {
+    "install-all": "cd crm-app && npm install && cd ../mail-app && npm install && cd ../1c-app && npm install && cd ../warehouse-app && npm install",
+    "build-all": "cd crm-app && npm run build:win && cd ../mail-app && npm run build:win && cd ../1c-app && npm run build:win && cd ../warehouse-app && npm run build:win",
+    "start-crm": "cd crm-app && npm start",
+    "start-mail": "cd mail-app && npm start",
+    "start-1c": "cd 1c-app && npm start",
+    "start-warehouse": "cd warehouse-app && npm start"
+  },
+  "author": "Company",
+  "license": "MIT"
+}

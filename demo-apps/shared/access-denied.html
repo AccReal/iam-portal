@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Доступ запрещён</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .container {
+      background: white;
+      border-radius: 16px;
+      padding: 50px;
+      text-align: center;
+      max-width: 520px;
+      width: 100%;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    .icon {
+      width: 80px;
+      height: 80px;
+      margin: 0 auto 30px;
+      background: #fee2e2;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .icon svg { width: 40px; height: 40px; color: #dc2626; }
+    h1 { font-size: 26px; color: #1f2937; margin-bottom: 12px; }
+    .message { color: #6b7280; font-size: 15px; line-height: 1.6; margin-bottom: 20px; }
+    .deny-reason {
+      background: #fff7ed;
+      border-left: 4px solid #f97316;
+      border-radius: 6px;
+      padding: 12px 16px;
+      margin-bottom: 24px;
+      text-align: left;
+      font-size: 13px;
+      color: #92400e;
+      display: none;
+    }
+    .deny-reason strong { display: block; margin-bottom: 4px; color: #c2410c; }
+    .user-info {
+      background: #f9fafb;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 28px;
+      text-align: left;
+    }
+    .user-info-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    .user-info-row:last-child { border-bottom: none; }
+    .label { color: #6b7280; font-size: 13px; }
+    .value { color: #1f2937; font-weight: 600; font-size: 13px; }
+    .button {
+      background: #667eea;
+      color: white;
+      border: none;
+      padding: 12px 30px;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .button:hover { background: #5568d3; }
+    .help-text { margin-top: 16px; font-size: 13px; color: #9ca3af; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="icon">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+          d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+      </svg>
+    </div>
+
+    <h1>Доступ запрещён</h1>
+    <p class="message">
+      У вас нет прав доступа к приложению <strong id="appName">приложению</strong>.
+      Обратитесь к администратору для получения необходимых разрешений.
+    </p>
+
+    <div class="deny-reason" id="denyReasonBox">
+      <strong>Причина отказа:</strong>
+      <span id="denyReasonText"></span>
+    </div>
+
+    <div class="user-info">
+      <div class="user-info-row">
+        <span class="label">Пользователь:</span>
+        <span class="value" id="userName">—</span>
+      </div>
+      <div class="user-info-row">
+        <span class="label">Email:</span>
+        <span class="value" id="userEmail">—</span>
+      </div>
+      <div class="user-info-row">
+        <span class="label">Роль:</span>
+        <span class="value" id="userRole">—</span>
+      </div>
+      <div class="user-info-row">
+        <span class="label">Приложение:</span>
+        <span class="value" id="appNameRow">—</span>
+      </div>
+    </div>
+
+    <button class="button" onclick="window.close()">Закрыть</button>
+    <p class="help-text">Для получения доступа свяжитесь с администратором системы</p>
+  </div>
+
+  <script>
+    const { ipcRenderer } = require('electron');
+    ipcRenderer.on('user-info', (_event, user) => {
+      document.getElementById('userName').textContent   = user.full_name || '—';
+      document.getElementById('userEmail').textContent  = user.email     || '—';
+      document.getElementById('userRole').textContent   = user.role?.name || '—';
+
+      if (user.appTitle) {
+        document.getElementById('appName').textContent    = user.appTitle;
+        document.getElementById('appNameRow').textContent = user.appTitle;
+      }
+
+      if (user.denyReason) {
+        document.getElementById('denyReasonText').textContent = user.denyReason;
+        document.getElementById('denyReasonBox').style.display = 'block';
+      }
+    });
+  </script>
+</body>
+</html>

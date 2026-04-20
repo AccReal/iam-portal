@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Складская система</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #f5f5f5;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+            color: white;
+            padding: 20px 40px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            background: rgba(255,255,255,0.2);
+            padding: 10px 20px;
+            border-radius: 25px;
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: white;
+            color: #f97316;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 18px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 30px auto;
+            padding: 0 40px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            transition: transform 0.2s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: #333;
+        }
+
+        .stat-change {
+            font-size: 12px;
+            margin-top: 8px;
+        }
+
+        .stat-change.positive {
+            color: #10b981;
+        }
+
+        .stat-change.negative {
+            color: #ef4444;
+        }
+
+        .content-section {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            margin-bottom: 20px;
+        }
+
+        .section-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .products-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .products-table th {
+            text-align: left;
+            padding: 12px;
+            background: #f9fafb;
+            color: #666;
+            font-weight: 600;
+            font-size: 14px;
+            border-bottom: 2px solid #e5e7eb;
+        }
+
+        .products-table td {
+            padding: 15px 12px;
+            border-bottom: 1px solid #e5e7eb;
+            color: #333;
+        }
+
+        .products-table tr:hover {
+            background: #f9fafb;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .status-in-stock {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .status-low {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .status-out {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .permissions-info {
+            background: #fff7ed;
+            border-left: 4px solid #f97316;
+            padding: 15px 20px;
+            margin-top: 20px;
+            border-radius: 4px;
+        }
+
+        .permissions-info strong {
+            color: #f97316;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-content">
+            <div class="logo">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                    <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                    <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                </svg>
+                Складская система
+            </div>
+            <div class="user-info">
+                <div class="user-avatar" id="userAvatar">A</div>
+                <div>
+                    <div id="userName" style="font-weight: 600;">Загрузка...</div>
+                    <div id="userRole" style="font-size: 12px; opacity: 0.9;">Роль</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">Всего товаров</div>
+                <div class="stat-value">2,847</div>
+                <div class="stat-change positive">↑ +124 за неделю</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">На складе (шт)</div>
+                <div class="stat-value">45,892</div>
+                <div class="stat-change negative">↓ -3% за неделю</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Стоимость (млн ₽)</div>
+                <div class="stat-value">128.5</div>
+                <div class="stat-change positive">↑ +8% за месяц</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Заказов в обработке</div>
+                <div class="stat-value">67</div>
+                <div class="stat-change positive">↑ +12 за день</div>
+            </div>
+        </div>
+
+        <div class="content-section">
+            <div class="section-title">Товары на складе</div>
+            <table class="products-table">
+                <thead>
+                    <tr>
+                        <th>Артикул</th>
+                        <th>Наименование</th>
+                        <th>Категория</th>
+                        <th>Количество</th>
+                        <th>Ед. изм.</th>
+                        <th>Цена</th>
+                        <th>Статус</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>A-001-2024</td>
+                        <td>Ноутбук Dell Latitude 5520</td>
+                        <td>Компьютеры</td>
+                        <td>45</td>
+                        <td>шт</td>
+                        <td>85,000 ₽</td>
+                        <td><span class="status-badge status-in-stock">В наличии</span></td>
+                    </tr>
+                    <tr>
+                        <td>A-002-2024</td>
+                        <td>Монитор LG 27" 4K</td>
+                        <td>Мониторы</td>
+                        <td>12</td>
+                        <td>шт</td>
+                        <td>32,000 ₽</td>
+                        <td><span class="status-badge status-low">Мало</span></td>
+                    </tr>
+                    <tr>
+                        <td>A-003-2024</td>
+                        <td>Клавиатура Logitech MX Keys</td>
+                        <td>Периферия</td>
+                        <td>128</td>
+                        <td>шт</td>
+                        <td>8,500 ₽</td>
+                        <td><span class="status-badge status-in-stock">В наличии</span></td>
+                    </tr>
+                    <tr>
+                        <td>A-004-2024</td>
+                        <td>Мышь Logitech MX Master 3</td>
+                        <td>Периферия</td>
+                        <td>0</td>
+                        <td>шт</td>
+                        <td>7,200 ₽</td>
+                        <td><span class="status-badge status-out">Нет в наличии</span></td>
+                    </tr>
+                    <tr>
+                        <td>B-001-2024</td>
+                        <td>Принтер HP LaserJet Pro</td>
+                        <td>Оргтехника</td>
+                        <td>23</td>
+                        <td>шт</td>
+                        <td>28,000 ₽</td>
+                        <td><span class="status-badge status-in-stock">В наличии</span></td>
+                    </tr>
+                    <tr>
+                        <td>B-002-2024</td>
+                        <td>Сканер Canon DR-C225</td>
+                        <td>Оргтехника</td>
+                        <td>8</td>
+                        <td>шт</td>
+                        <td>45,000 ₽</td>
+                        <td><span class="status-badge status-low">Мало</span></td>
+                    </tr>
+                    <tr>
+                        <td>C-001-2024</td>
+                        <td>Бумага A4 (пачка 500 листов)</td>
+                        <td>Расходники</td>
+                        <td>450</td>
+                        <td>пач</td>
+                        <td>350 ₽</td>
+                        <td><span class="status-badge status-in-stock">В наличии</span></td>
+                    </tr>
+                    <tr>
+                        <td>C-002-2024</td>
+                        <td>Картридж HP 305A Black</td>
+                        <td>Расходники</td>
+                        <td>15</td>
+                        <td>шт</td>
+                        <td>4,200 ₽</td>
+                        <td><span class="status-badge status-low">Мало</span></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="permissions-info" id="permissionsInfo">
+                <strong>Ваши права доступа:</strong> <span id="permissions">Загрузка...</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { ipcRenderer } = require('electron');
+
+        ipcRenderer.on('user-info', (event, user) => {
+            document.getElementById('userName').textContent = user.full_name || user.email;
+            document.getElementById('userRole').textContent = user.role?.name || 'Пользователь';
+            
+            const initials = (user.full_name || user.email)
+                .split(' ')
+                .map(n => n[0])
+                .join('')
+                .toUpperCase()
+                .substring(0, 2);
+            document.getElementById('userAvatar').textContent = initials;
+
+            const permissions = [];
+            if (user.permissions?.can_read) permissions.push('Чтение');
+            if (user.permissions?.can_write) permissions.push('Запись');
+            if (user.permissions?.can_export) permissions.push('Экспорт');
+            
+            document.getElementById('permissions').textContent = permissions.join(', ') || 'Нет прав';
+        });
+    </script>
+</body>
+</html>

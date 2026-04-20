@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Требуется вход</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: linear-gradient(135deg, #f6f8fc 0%, #e9eef5 100%);
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #1f2937;
+    }
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+      padding: 36px 40px;
+      width: 440px;
+    }
+    h1 { margin: 0 0 8px; font-size: 20px; font-weight: 600; }
+    .subtitle { color: #6b7280; font-size: 13px; margin-bottom: 24px; }
+    .app-name { font-weight: 600; color: #1d4ed8; }
+    .lock { font-size: 36px; margin-bottom: 10px; }
+    .steps {
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 14px 18px;
+      margin-bottom: 22px;
+      font-size: 13px;
+      color: #374151;
+      line-height: 1.55;
+    }
+    .steps ol { padding-left: 18px; margin: 0; }
+    .steps li + li { margin-top: 4px; }
+    .row { display: flex; gap: 10px; }
+    button {
+      flex: 1;
+      padding: 11px 14px;
+      font-size: 14px;
+      border-radius: 8px;
+      border: 1px solid #d1d5db;
+      background: #fff;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    button:hover { background: #f3f4f6; }
+    button.primary {
+      background: #2563eb;
+      color: #fff;
+      border-color: #2563eb;
+    }
+    button.primary:hover { background: #1d4ed8; }
+    .hint {
+      margin-top: 18px;
+      font-size: 12px;
+      color: #9ca3af;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="lock">🔐</div>
+    <h1>Требуется вход в <span id="app-name" class="app-name">приложение</span></h1>
+    <div class="subtitle">Доступ к корпоративным приложениям осуществляется через Единый портал доступа.</div>
+    <div class="steps">
+      <ol>
+        <li>Нажмите «Открыть IAM Portal».</li>
+        <li>Войдите или зарегистрируйтесь, пройдите MFA.</li>
+        <li>Приложение откроется автоматически — возвращаться сюда не нужно.</li>
+      </ol>
+    </div>
+    <div class="row">
+      <button class="primary" id="btn-open">Открыть IAM Portal</button>
+      <button id="btn-recheck">Я уже вошёл</button>
+    </div>
+    <div class="hint">Окно обновится автоматически, как только вы войдёте в портал.</div>
+  </div>
+
+  <script>
+    const { ipcRenderer } = require('electron');
+    ipcRenderer.on('prompt-info', (_event, info) => {
+      document.getElementById('app-name').textContent = info.appTitle || 'приложение';
+    });
+    document.getElementById('btn-open').addEventListener('click', () => {
+      ipcRenderer.send('iam:open-portal');
+    });
+    document.getElementById('btn-recheck').addEventListener('click', () => {
+      ipcRenderer.send('iam:recheck');
+    });
+  </script>
+</body>
+</html>
