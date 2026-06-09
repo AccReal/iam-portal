@@ -105,7 +105,7 @@ async def store_auth_code(
     client_id: str,
     scope: str,
     redirect_uri: str,
-    code_challenge: str,
+    code_challenge: str | None,
     nonce: str | None,
 ) -> None:
     payload = json.dumps(
@@ -122,11 +122,15 @@ async def store_auth_code(
 
 
 async def consume_auth_code(
-    code: str, code_verifier: str, redirect_uri: str, client_id: str
+    code: str, code_verifier: str | None, redirect_uri: str, client_id: str
 ) -> dict | None:
     """Validate and atomically consume an authorization code.
 
     Returns the stored payload dict on success, or None on failure.
+
+    PKCE verification is performed only when a code_challenge was stored at
+    authorization time (public clients). Confidential clients (those that
+    authenticate with client_secret at the token endpoint) may omit PKCE.
     """
     raw = await redis_client.get(f"{_CODE_PREFIX}{code}")
     if not raw:
@@ -141,9 +145,15 @@ async def consume_auth_code(
     if data["redirect_uri"] != redirect_uri:
         logger.warning("OIDC: redirect_uri mismatch on code exchange")
         return None
-    if not verify_pkce(data["code_challenge"], code_verifier):
-        logger.warning("OIDC: PKCE verification failed")
-        return None
+    stored_challenge = data.get("code_challenge")
+    if stored_challenge:
+        # Public client path: PKCE challenge was stored, must verify
+        if not code_verifier:
+            logger.warning("OIDC: code_verifier missing for PKCE-protected code")
+            return None
+        if not verify_pkce(stored_challenge, code_verifier):
+            logger.warning("OIDC: PKCE verification failed")
+            return None
     return data
 
 

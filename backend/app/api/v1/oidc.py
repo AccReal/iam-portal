@@ -43,7 +43,7 @@ from fastapi import (
     Response,
     status,
 )
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -188,23 +188,29 @@ async def authorize(
     if response_type not in ("code", "token"):
         return _oauth_error("unsupported_response_type", "Only 'code' and 'token' are supported")
 
-    # PKCE is mandatory for code flow, not applicable for token (implicit) flow
-    if response_type == "code":
-        if not code_challenge or code_challenge_method != "S256":
-            return _oauth_error(
-                "invalid_request",
-                "code_challenge with method S256 is required (PKCE mandatory)",
-            )
-        if len(code_challenge) < 43 or len(code_challenge) > 128:
-            return _oauth_error("invalid_request", "code_challenge length must be 43–128 chars")
-
-    # --- 2. Validate client ---
+    # --- 2. Validate client (must happen before PKCE check to know if confidential) ---
     app = await get_oidc_client(client_id, db)
     if not app:
         return _oauth_error("invalid_client", "Unknown or inactive client_id")
 
     if not validate_redirect_uri(app, redirect_uri):
         return _oauth_error("invalid_request", "redirect_uri not registered for this client")
+
+    # PKCE: mandatory for public clients (no client_secret), optional for confidential clients.
+    # Confidential clients (Roundcube, EspoCRM, InvenTree) authenticate with client_secret at
+    # the token endpoint — they don't need PKCE for the authorization request.
+    is_confidential = bool(app.client_secret_hash)
+    if response_type == "code" and not is_confidential:
+        if not code_challenge or code_challenge_method != "S256":
+            return _oauth_error(
+                "invalid_request",
+                "code_challenge with method S256 is required (PKCE mandatory for public clients)",
+            )
+    if response_type == "code" and code_challenge:
+        if code_challenge_method != "S256":
+            return _oauth_error("invalid_request", "Only S256 code_challenge_method is supported")
+        if len(code_challenge) < 43 or len(code_challenge) > 128:
+            return _oauth_error("invalid_request", "code_challenge length must be 43–128 chars")
 
     # --- 3. Resolve IAM session ---
     user = await _get_user_from_iam_cookie(refresh_token, db)
@@ -235,7 +241,7 @@ async def authorize(
         logger.info("OIDC: implicit token issued for client=%s", client_id)
         return RedirectResponse(url=location, status_code=302)
 
-    # --- 5b. Authorization Code Flow (PKCE) ---
+    # --- 5b. Authorization Code Flow ---
     code = secrets.token_urlsafe(32)
     await store_auth_code(
         code=code,
@@ -243,7 +249,7 @@ async def authorize(
         client_id=client_id,
         scope=granted_scope,
         redirect_uri=redirect_uri,
-        code_challenge=code_challenge,  # type: ignore[arg-type]
+        code_challenge=code_challenge,  # None for confidential clients without PKCE
         nonce=nonce,
     )
 
@@ -254,6 +260,125 @@ async def authorize(
         params["state"] = state
     location = redirect_uri + "?" + urllib.parse.urlencode(params)
     return RedirectResponse(url=location, status_code=302)
+
+
+# ---------------------------------------------------------------------------
+# Odoo-specific authorize endpoint — account switcher + SSO gate
+# ---------------------------------------------------------------------------
+
+@router.get("/authorize-odoo")
+async def authorize_odoo(
+    request: Request,
+    refresh_token: Annotated[str | None, Cookie(alias="refresh_token")] = None,
+    db: AsyncSession = Depends(get_db),
+) -> Response:
+    """Account-switcher gate for Odoo's implicit OAuth flow.
+
+    Odoo appends ``?response_type=token&client_id=odoo&...`` to whatever URL is
+    set as ``auth_endpoint`` and opens it in a **popup**.  This endpoint:
+
+    * If the user has a valid IAM session → shows a small HTML page:
+        - "Continue as <email>" → navigates the popup to the real /oauth/authorize
+        - "Switch account" → clears the IAM cookie and redirects the popup to the
+          IAM login page, after which login redirects back to /oauth/authorize.
+    * If no valid IAM session → redirects the popup straight to the IAM login page
+      with ``next`` pointing at the backend /oauth/authorize (not the frontend SPA),
+      so the Vite dev-server is never involved in the popup path.
+
+    In all cases the popup eventually lands on Odoo's redirect_uri
+    (``/iam/sso/callback#access_token=…``) and Odoo's JS closes it.
+    """
+    # Rebuild params without "prompt" to avoid infinite redirect loops
+    params = {k: v for k, v in request.query_params.items() if k != "prompt"}
+    qs = urllib.parse.urlencode(params)
+
+    # Use the Vite proxy URL (APP_FRONTEND_URL) for /oauth/authorize so the
+    # browser-facing redirect goes through localhost:3000 → Vite → backend.
+    # OIDC_ISSUER is the Docker-internal hostname (backend:8000) and cannot
+    # be used for browser redirects.
+    backend_authorize = (
+        f"{settings.APP_FRONTEND_URL}/oauth/authorize?{qs}" if qs
+        else f"{settings.APP_FRONTEND_URL}/oauth/authorize"
+    )
+
+    user = await _get_user_from_iam_cookie(refresh_token, db)
+
+    if not user:
+        # No session → redirect popup to IAM login, then back to backend authorize
+        login_url = (
+            f"{settings.APP_FRONTEND_URL}/login"
+            f"?next={urllib.parse.quote_plus(backend_authorize)}"
+        )
+        return RedirectResponse(url=login_url, status_code=302)
+
+    # Session found → show account-switcher page inside the popup.
+    # Build the switch-account URL from the current request's origin so we
+    # use the browser-visible hostname (localhost:8000) rather than the
+    # Docker-internal OIDC_ISSUER (backend:8000).
+    origin = f"{request.url.scheme}://{request.url.netloc}"
+    switch_url = (
+        f"{origin}/oauth/switch-account"
+        f"?next={urllib.parse.quote_plus(backend_authorize)}"
+    )
+
+    html = f"""<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Вход в Odoo</title>
+<style>
+  *{{box-sizing:border-box;margin:0;padding:0}}
+  body{{font-family:system-ui,sans-serif;background:#f0f2f5;display:flex;
+        align-items:center;justify-content:center;min-height:100vh}}
+  .card{{background:#fff;border-radius:14px;padding:2rem 1.75rem;
+         box-shadow:0 6px 24px rgba(0,0,0,.12);max-width:360px;width:90%;
+         text-align:center}}
+  h2{{font-size:1.2rem;font-weight:700;color:#1a1a2e;margin-bottom:.4rem}}
+  .sub{{font-size:.85rem;color:#6b7280;margin-bottom:1.5rem}}
+  .email{{font-weight:600;color:#1a1a2e}}
+  a.btn{{display:block;width:100%;padding:.75rem 1rem;border-radius:9px;
+         font-size:.93rem;font-weight:600;text-decoration:none;
+         transition:background .15s,box-shadow .15s}}
+  .btn-primary{{background:#4f46e5;color:#fff;margin-bottom:.75rem}}
+  .btn-primary:hover{{background:#4338ca;box-shadow:0 4px 12px rgba(79,70,229,.3)}}
+  .btn-secondary{{background:#f3f4f6;color:#374151;
+                  border:1px solid #e5e7eb}}
+  .btn-secondary:hover{{background:#e5e7eb}}
+</style>
+</head>
+<body>
+<div class="card">
+  <h2>Вход в Odoo</h2>
+  <p class="sub">Вы вошли в IAM как<br><span class="email">{user.email}</span></p>
+  <a href="{backend_authorize}" class="btn btn-primary">Продолжить как {user.email}</a>
+  <a href="{switch_url}" class="btn btn-secondary">Войти с другого аккаунта</a>
+</div>
+</body>
+</html>"""
+    return HTMLResponse(content=html)
+
+
+@router.get("/switch-account")
+async def switch_account(
+    next: str = Query(...),
+) -> Response:
+    """Clear the IAM session cookie and redirect to login.
+
+    Used by the Odoo account-switcher page when the user wants to log in
+    with a different IAM account.
+    """
+    # ?relogin=true tells the Vue router guard to clear the in-memory access token
+    # (localStorage) even though the user appears authenticated, so the login form
+    # is shown instead of redirecting to the dashboard.
+    login_url = (
+        f"{settings.APP_FRONTEND_URL}/login"
+        f"?relogin=true&next={urllib.parse.quote_plus(next)}"
+    )
+    resp = RedirectResponse(url=login_url, status_code=302)
+    # Delete the IAM refresh_token cookie so /oauth/authorize requires fresh login
+    resp.delete_cookie("refresh_token", path="/", httponly=True, samesite="lax")
+    return resp
 
 
 # ---------------------------------------------------------------------------
@@ -288,17 +413,25 @@ async def _handle_code_exchange(
     code_verifier: str | None,
     db: AsyncSession,
 ) -> JSONResponse:
-    if not all([code, redirect_uri, client_id, code_verifier]):
+    if not all([code, redirect_uri, client_id]):
         return _oauth_error("invalid_request", "Missing required parameters")
 
-    assert code and redirect_uri and client_id and code_verifier  # narrowing
+    assert code and redirect_uri and client_id  # narrowing
 
     app = await get_oidc_client(client_id, db)
     if not app:
         return _oauth_error("invalid_client", "Unknown client_id", 401)
 
-    # Client authentication (public clients skip secret check)
-    if app.client_secret_hash and client_secret:
+    is_confidential = bool(app.client_secret_hash)
+
+    # Public clients must supply code_verifier (PKCE)
+    if not is_confidential and not code_verifier:
+        return _oauth_error("invalid_request", "code_verifier is required for public clients")
+
+    # Confidential clients must authenticate with client_secret
+    if is_confidential:
+        if not client_secret:
+            return _oauth_error("invalid_client", "client_secret is required for confidential clients", 401)
         if not verify_client_secret(app, client_secret):
             return _oauth_error("invalid_client", "Invalid client_secret", 401)
 

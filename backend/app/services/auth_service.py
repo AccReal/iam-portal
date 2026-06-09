@@ -137,9 +137,11 @@ async def refresh_tokens(db: AsyncSession, refresh_token: str) -> dict | None:
     if not user or user.is_blocked:
         return None
 
-    # Rotate: delete old session, create new
+    # Rotate: delete old session, create new (preserve IP and user agent)
+    old_ip = session.ip_address
+    old_ua = session.user_agent
     await db.delete(session)
-    return await create_tokens_for_user(user, db)
+    return await create_tokens_for_user(user, db, ip=old_ip, user_agent=old_ua)
 
 
 async def logout_user(db: AsyncSession, refresh_token: str):
@@ -152,9 +154,22 @@ async def logout_user(db: AsyncSession, refresh_token: str):
         await db.delete(session)
 
 
+def _is_private_network(ip: str) -> bool:
+    """True for loopback and RFC-1918/Docker private ranges."""
+    return (
+        not ip
+        or ip in ("127.0.0.1", "::1", "localhost")
+        or ip.startswith("10.")
+        or ip.startswith("192.168.")
+        or any(ip.startswith(f"172.{i}.") for i in range(16, 32))
+    )
+
+
 async def is_new_ip(db: AsyncSession, user_id: str, ip: str | None) -> bool:
-    """Return True if this IP has never appeared in any previous session for the user."""
-    if not ip:
+    """Return True if this IP has never appeared in any previous session for the user.
+    Private/Docker IPs (172.x.x.x, 10.x.x.x, 192.168.x.x) are never flagged as new —
+    they change on container restart and don't represent a real new location."""
+    if not ip or _is_private_network(ip):
         return False
     result = await db.execute(
         select(Session).where(

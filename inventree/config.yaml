@@ -1,0 +1,9 @@
+# InvenTree configuration — IAM Portal OIDC integration
+
+# Enable the OpenID Connect social account provider
+social_backends:
+  - allauth.socialaccount.providers.openid_connect
+
+# Allow login via social accounts without email confirmation
+login_confirm_email: false
+account_email_verification: none

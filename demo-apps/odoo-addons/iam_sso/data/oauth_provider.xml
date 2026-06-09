@@ -10,8 +10,8 @@
     <record id="provider_iam_portal" model="auth.oauth.provider">
         <field name="name">IAM Portal</field>
         <field name="client_id">odoo</field>
-        <!-- Authorization endpoint — browser-side redirect -->
-        <field name="auth_endpoint">http://localhost:8000/oauth/authorize</field>
+        <!-- Authorization endpoint — forces IAM re-login so any account can be selected -->
+        <field name="auth_endpoint">http://localhost:8000/oauth/authorize-odoo</field>
         <!-- Userinfo / validation endpoint — server-side call with access_token -->
         <field name="validation_endpoint">http://backend:8000/oauth/userinfo</field>
         <field name="scope">openid profile email roles</field>

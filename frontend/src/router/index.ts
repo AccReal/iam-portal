@@ -91,6 +91,12 @@ router.beforeEach((to, _from, next) => {
   }
 
   if (to.meta.guest && authStore.isAuthenticated) {
+    // ?relogin=true: forced re-authentication (e.g. Odoo SSO account switch).
+    // Clear the in-memory session so the login form shows, then proceed.
+    if (to.query.relogin === 'true') {
+      authStore.logout()
+      return next()
+    }
     // Authenticated user visiting a guest-only page — redirect appropriately
     if (authStore.mfaSetupRequired) return next({ name: 'setup-totp' })
     return next({ name: 'dashboard' })

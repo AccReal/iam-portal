@@ -52,3 +52,11 @@ electron/node_modules/
 # Kiro specs (IDE-specific)
 .kiro/
 backend/.hypothesis/
+
+# Celery Beat runtime schedule database
+backend/celerybeat-schedule
+backend/celerybeat-schedule.db
+
+# Demo-app build artifacts (rebuild with npm install && npm run build)
+demo-apps/*/node_modules/
+demo-apps/*/dist/
