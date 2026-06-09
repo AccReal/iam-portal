@@ -183,7 +183,7 @@
               </template>
             </a-alert>
 
-            <a-space>
+            <a-space wrap>
               <a-button :loading="settingUpMfa" @click="onSetupMfa">
                 Переконфигурировать
               </a-button>
@@ -195,22 +195,30 @@
             </a-space>
 
             <!-- Disable form: requires TOTP code -->
-            <a-form v-if="showDisableForm" @finish="onDisableMfa" layout="inline"
-                    style="margin-top: 16px" :disabled="disablingMfa">
-              <a-form-item label="Код из приложения для подтверждения">
-                <a-input v-model:value="disableCode" placeholder="000000" :maxlength="6"
-                         style="width: 120px; letter-spacing: 3px" />
-              </a-form-item>
-              <a-form-item>
-                <a-button html-type="submit" danger :loading="disablingMfa"
-                          :disabled="disableCode.length !== 6">
-                  Подтвердить отключение
-                </a-button>
-              </a-form-item>
-              <a-form-item>
-                <a-button @click="showDisableForm = false; disableCode = ''">Отмена</a-button>
-              </a-form-item>
-            </a-form>
+            <div v-if="showDisableForm" style="margin-top: 16px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap">
+              <span style="font-size: 13px; color: #374151">Код из приложения:</span>
+              <a-input
+                v-model:value="disableCode"
+                placeholder="000000"
+                :maxlength="6"
+                :disabled="disablingMfa"
+                style="width: 120px; letter-spacing: 3px; font-size: 16px"
+                @pressEnter="disableCode.length === 6 && onDisableMfa()"
+              />
+              <a-button
+                danger
+                :loading="disablingMfa"
+                :disabled="disableCode.length !== 6 || disablingMfa"
+                @click="onDisableMfa"
+              >
+                Подтвердить отключение
+              </a-button>
+              <a-button :disabled="disablingMfa" @click="showDisableForm = false; disableCode = ''; disableMfaError = ''">
+                Отмена
+              </a-button>
+            </div>
+            <a-alert v-if="disableMfaError" :message="disableMfaError" type="error" show-icon
+                     closable style="margin-top: 12px" @close="disableMfaError = ''" />
           </template>
 
         </a-card>
@@ -260,6 +268,7 @@ const confirmingMfa = ref(false)
 const disablingMfa = ref(false)
 const showDisableForm = ref(false)
 const disableCode = ref('')
+const disableMfaError = ref('')
 
 const initials = computed(() => {
   if (!profile.value?.full_name) return '?'
@@ -420,6 +429,7 @@ async function onConfirmMfa() {
 
 async function onDisableMfa() {
   disablingMfa.value = true
+  disableMfaError.value = ''
   try {
     await usersApi.disableMfaWithCode(disableCode.value)
     if (profile.value) {
@@ -429,9 +439,20 @@ async function onDisableMfa() {
     showDisableForm.value = false
     disableCode.value = ''
     mfaSetup.value = null
-    message.success('MFA отключена')
+    message.success('MFA успешно отключена')
   } catch (e: any) {
-    message.error(e.response?.data?.detail || 'Ошибка отключения MFA')
+    const status = e.response?.status
+    const detail = e.response?.data?.detail || 'Ошибка отключения MFA'
+    disableMfaError.value = detail
+    if (status === 422) {
+      disableMfaError.value = detail // wrong TOTP code
+    } else if (status === 403) {
+      disableMfaError.value = detail // policy: MFA required
+    } else if (status === 401) {
+      disableMfaError.value = 'Сессия истекла. Обновите страницу и войдите заново.'
+    } else {
+      disableMfaError.value = detail
+    }
   } finally {
     disablingMfa.value = false
   }

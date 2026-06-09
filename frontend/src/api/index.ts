@@ -47,8 +47,9 @@ api.interceptors.response.use(
       }
     }
 
-    // Handle 403 Forbidden
-    if (error.response?.status === 403) {
+    // Handle 403 Forbidden — only show generic toast if the component
+    // hasn't set a custom error message (i.e., no detail field to show inline)
+    if (error.response?.status === 403 && !error.response?.data?.detail) {
       message.error('Недостаточно прав для выполнения этого действия')
     }
 

@@ -122,9 +122,27 @@ async def get_user_typical_hours(db: AsyncSession, user_id) -> tuple | None:
     return None
 
 
+def _is_private_ip(ip: str) -> bool:
+    """Return True for loopback, link-local and RFC-1918 private ranges."""
+    return (
+        ip in ("127.0.0.1", "::1", "localhost")
+        or ip.startswith("10.")
+        or ip.startswith("192.168.")
+        or ip.startswith("172.16.")
+        or ip.startswith("172.17.")
+        or ip.startswith("172.18.")
+        or ip.startswith("172.19.")
+        or ip.startswith("172.2")
+        or ip.startswith("172.3")
+        or ip.startswith("fc00:")
+        or ip.startswith("fd")
+        or ip.startswith("fe80:")
+    )
+
+
 async def _get_geo_info(ip: str) -> dict | None:
     """Get geolocation info from ip-api.com (free tier)."""
-    if ip in ("127.0.0.1", "::1", "localhost"):
+    if _is_private_ip(ip):
         return {"countryCode": "RU", "country": "Local"}
     try:
         async with httpx.AsyncClient(timeout=3) as client:

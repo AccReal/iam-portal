@@ -224,7 +224,7 @@ async def disable_mfa(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="MFA не включена")
 
     if not verify_totp(current_user.mfa_secret, body.code):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Неверный код")
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Неверный код TOTP. Проверьте время на устройстве и попробуйте снова.")
 
     if settings.MFA_REQUIRED:
         raise HTTPException(

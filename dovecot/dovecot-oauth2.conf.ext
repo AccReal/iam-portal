@@ -1,0 +1,18 @@
+# Dovecot OAuth2 passdb configuration
+# Validates XOAUTH2/OAUTHBEARER tokens by calling IAM Portal's userinfo endpoint.
+# Dovecot sends: GET /oauth/userinfo  with  Authorization: Bearer <token>
+# IAM responds: {"sub": "...", "email": "user@company.ru", ...}
+
+# Use the userinfo endpoint as introspection (Authorization: Bearer <token>)
+introspection_mode = auth
+introspection_url = http://backend:8000/oauth/userinfo
+
+# Map the 'email' claim to the IMAP username
+username_attribute = email
+
+# The user is considered active if 'email' is present in the response
+active_attribute = email
+active_value =
+
+# Pass the raw token to the userdb lookup
+pass_attrs = token=%{token}

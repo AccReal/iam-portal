@@ -39,12 +39,12 @@ class IamSsoController(Home):
 
     @http.route('/web/login', type='http', auth='none', website=False, sitemap=False)
     def web_login(self, redirect=None, **kw):
-        # Already authenticated — go straight to the app.
+        # If already authenticated in Odoo, log out first so the SSO button
+        # is always visible. This allows switching between IAM Portal accounts.
         if request.session.uid:
-            return request.redirect(redirect or '/web')
+            request.session.logout(keep_db=True)
 
-        # Always show the standard login page (with the OAuth button rendered
-        # by Odoo's own auth_oauth module). No auto-redirect.
+        # Always show the standard login page with the "Войти через IAM Portal" button.
         return super().web_login(redirect=redirect, **kw)
 
     @http.route('/iam/sso/callback', type='http', auth='none', website=False, sitemap=False)

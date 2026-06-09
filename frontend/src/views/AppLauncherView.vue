@@ -2,7 +2,7 @@
   <div class="launcher">
     <header class="launcher__header">
       <h1 class="launcher__title">Корпоративный портал</h1>
-      <p class="launcher__subtitle">Выберите приложение для входа через единый аккаунт</p>
+      <p class="launcher__subtitle">Выберите приложение — вход выполняется через единый аккаунт IAM</p>
     </header>
 
     <div v-if="loading" class="launcher__loading" role="status" aria-live="polite">
@@ -30,12 +30,19 @@
           @keydown.enter="launch(app)"
           @keydown.space.prevent="launch(app)"
         >
-          <span class="app-tile__icon" aria-hidden="true">{{ app.icon ?? '🔗' }}</span>
-          <span class="app-tile__name">{{ app.name }}</span>
-          <span class="app-tile__desc">{{ app.description }}</span>
-          <span v-if="connectingId === app.id" class="app-tile__status" aria-live="polite">
-            Подключение…
-          </span>
+          <div class="app-tile__icon-wrap">
+            <span class="app-tile__icon" aria-hidden="true">{{ app.icon ?? '🔗' }}</span>
+          </div>
+          <div class="app-tile__body">
+            <span class="app-tile__name">{{ app.name }}</span>
+            <span v-if="app.description" class="app-tile__desc">{{ app.description }}</span>
+          </div>
+          <div class="app-tile__footer">
+            <span v-if="connectingId === app.id" class="app-tile__status" aria-live="polite">
+              ⏳ Подключение…
+            </span>
+            <span v-else class="app-tile__sso-badge">SSO →</span>
+          </div>
         </button>
       </li>
     </ul>
@@ -84,8 +91,10 @@ const connectingId = ref<string | null>(null)
 const accessibleApps = computed<App[]>(() => {
   return apps.value.filter((app) => {
     if (!app.integration_type.includes('oauth') && app.integration_type !== 'oidc') return false
-    if (!app.client_id || !app.redirect_uris.length) return false
-    return true
+    // Server-side apps (all new services + Odoo + Nextcloud) launch via app_url
+    if (app.app_url) return true
+    // Legacy client-side SPAs need client_id + redirect_uris for the PKCE flow
+    return Boolean(app.client_id) && app.redirect_uris.length > 0
   })
 })
 
@@ -138,31 +147,35 @@ function generateState(): string {
 // This ensures the refresh_token cookie (set for :3000) is included in the request.
 const OIDC_BASE = ''
 
+// Server-side OIDC clients manage their own code exchange (PKCE verifier stays on their server).
+// Opening their app_url triggers the service's own OAuth redirect → IAM auto-approves via cookie.
+// Client-side SPAs (no app_url, custom redirect) use the frontend PKCE flow below.
+function isServerSideOidc(app: App): boolean {
+  return Boolean(app.app_url)
+}
+
 async function launch(app: App): Promise<void> {
-  if (!app.client_id || !app.redirect_uris.length) return
+  if (!app.client_id) return
   connectingId.value = app.id
 
   try {
-    const scope = app.allowed_scopes ?? 'openid profile email'
-    const state = generateState()
-
-    // Odoo auth_oauth uses implicit flow (token in fragment); detect by redirect URI.
-    // Odoo parses state as JSON to find db name ("d") and provider id ("p").
-    const implicitUri = app.redirect_uris.find((u) => u.includes('auth_oauth/signin'))
-    if (implicitUri) {
-      const odooState = JSON.stringify({ d: 'odoo', p: 4, r: '/web' })
-      const params = new URLSearchParams({
-        response_type: 'token',
-        client_id: app.client_id,
-        redirect_uri: implicitUri,
-        scope,
-        state: odooState,
-      })
-      window.location.href = `${OIDC_BASE}/oauth/authorize?${params.toString()}`
+    // Server-side OIDC clients (Grafana, EspoCRM, InvenTree, Roundcube, Odoo, Nextcloud):
+    // just open the service URL — the service redirects to IAM, IAM reads the session cookie
+    // and auto-approves without a second login prompt.
+    if (isServerSideOidc(app)) {
+      window.open(app.app_url!, '_blank')
+      connectingId.value = null
       return
     }
 
-    // PKCE Authorization Code flow (Nextcloud user_oidc and others)
+    // Client-side SPA PKCE flow (legacy / custom apps without a fixed app_url).
+    if (!app.redirect_uris.length) {
+      connectingId.value = null
+      return
+    }
+
+    const scope = app.allowed_scopes ?? 'openid profile email'
+    const state = generateState()
     const redirectUri = app.redirect_uris[app.redirect_uris.length - 1]
     const verifier = generateCodeVerifier()
     const challenge = await generateCodeChallenge(verifier)
@@ -252,56 +265,99 @@ onMounted(async () => {
 .app-tile__btn {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 0.5rem;
   width: 100%;
-  padding: 1.5rem 1rem;
+  padding: 0;
   background: var(--color-surface, #fff);
-  border: 1px solid var(--color-border, #e0e0e0);
-  border-radius: 12px;
+  border: 1px solid var(--color-border, #e8e8e8);
+  border-radius: 14px;
   cursor: pointer;
-  transition: box-shadow 0.15s, transform 0.1s;
-  text-align: center;
+  transition: box-shadow 0.18s, transform 0.12s, border-color 0.18s;
+  text-align: left;
+  overflow: hidden;
 }
 
 .app-tile__btn:hover:not(:disabled) {
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
-  transform: translateY(-2px);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.1);
+  transform: translateY(-3px);
+  border-color: #4f46e5;
 }
 
 .app-tile__btn:focus-visible {
-  outline: 3px solid #2563eb;
+  outline: 3px solid #4f46e5;
   outline-offset: 2px;
 }
 
 .app-tile__btn:disabled {
-  opacity: 0.6;
+  opacity: 0.55;
   cursor: not-allowed;
 }
 
 .app-tile--connecting .app-tile__btn {
-  border-color: #2563eb;
+  border-color: #4f46e5;
+  box-shadow: 0 4px 16px rgba(79, 70, 229, 0.18);
+}
+
+/* Icon strip at the top */
+.app-tile__icon-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 80px;
+  background: linear-gradient(135deg, #f0f0ff 0%, #e8f4ff 100%);
+  border-bottom: 1px solid var(--color-border, #e8e8e8);
+}
+
+.app-tile--connecting .app-tile__icon-wrap {
+  background: linear-gradient(135deg, #eef2ff 0%, #dbeafe 100%);
 }
 
 .app-tile__icon {
-  font-size: 2.5rem;
+  font-size: 2.8rem;
   line-height: 1;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.08));
+}
+
+/* Text body */
+.app-tile__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.9rem 1rem 0.5rem;
+  flex: 1;
 }
 
 .app-tile__name {
-  font-size: 1rem;
-  font-weight: 600;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--color-text, #1a1a2e);
+  line-height: 1.2;
 }
 
 .app-tile__desc {
-  font-size: 0.8rem;
-  color: var(--color-text-secondary, #666);
+  font-size: 0.78rem;
+  color: var(--color-text-secondary, #6b7280);
+  line-height: 1.4;
+}
+
+/* Footer */
+.app-tile__footer {
+  padding: 0.4rem 1rem 0.7rem;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.app-tile__sso-badge {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #4f46e5;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
 }
 
 .app-tile__status {
-  font-size: 0.75rem;
-  color: #2563eb;
-  font-weight: 500;
+  font-size: 0.78rem;
+  color: #4f46e5;
+  font-weight: 600;
 }
 
 .spinner {

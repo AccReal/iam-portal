@@ -187,6 +187,190 @@ services:
       timeout: 5s
       retries: 5
 
+  # ---------------------------------------------------------------------------
+  # Grafana — Отчёты / Аналитика (port 8091)
+  # OIDC: полностью через env vars, работает сразу
+  # Redirect URI: http://localhost:8091/login/generic_oauth
+  # ---------------------------------------------------------------------------
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "8091:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+    environment:
+      GF_SERVER_ROOT_URL: "http://localhost:8091"
+      GF_AUTH_GENERIC_OAUTH_ENABLED: "true"
+      GF_AUTH_GENERIC_OAUTH_NAME: "IAM Portal"
+      GF_AUTH_GENERIC_OAUTH_CLIENT_ID: "grafana"
+      GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET: "GrafanaOAuthSecret2024"
+      GF_AUTH_GENERIC_OAUTH_SCOPES: "openid profile email"
+      GF_AUTH_GENERIC_OAUTH_AUTH_URL: "http://localhost:8000/oauth/authorize"
+      GF_AUTH_GENERIC_OAUTH_TOKEN_URL: "http://backend:8000/oauth/token"
+      GF_AUTH_GENERIC_OAUTH_API_URL: "http://backend:8000/oauth/userinfo"
+      GF_AUTH_GENERIC_OAUTH_ALLOW_SIGN_UP: "true"
+      GF_AUTH_GENERIC_OAUTH_USE_PKCE: "true"
+      GF_AUTH_GENERIC_OAUTH_EMAIL_ATTRIBUTE_PATH: "email"
+      GF_AUTH_GENERIC_OAUTH_LOGIN_ATTRIBUTE_PATH: "email"
+      GF_AUTH_GENERIC_OAUTH_NAME_ATTRIBUTE_PATH: "name"
+      GF_SECURITY_ADMIN_USER: "admin"
+      GF_SECURITY_ADMIN_PASSWORD: "admin_password"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  # ---------------------------------------------------------------------------
+  # EspoCRM — CRM Система (port 8090)
+  # OIDC: настраивается через data/config-internal.php
+  # Redirect URI: http://localhost:8090?entryPoint=oauthCallback
+  # ---------------------------------------------------------------------------
+  espocrm:
+    image: espocrm/espocrm:latest
+    ports:
+      - "8090:80"
+    depends_on:
+      espocrm-db:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    volumes:
+      - espocrm-data:/var/www/html/data
+      - ./espocrm/config-internal.php:/var/www/html/data/config-internal.php
+    environment:
+      ESPOCRM_DATABASE_PLATFORM: Mysql
+      ESPOCRM_DATABASE_HOST: espocrm-db
+      ESPOCRM_DATABASE_PORT: 3306
+      ESPOCRM_DATABASE_NAME: espocrm
+      ESPOCRM_DATABASE_USER: espocrm
+      ESPOCRM_DATABASE_PASSWORD: espocrm_password
+      ESPOCRM_ADMIN_USERNAME: admin
+      ESPOCRM_ADMIN_PASSWORD: admin_password
+      ESPOCRM_SITE_URL: "http://localhost:8090"
+      ESPOCRM_CONFIG_LOGGER_LEVEL: WARNING
+
+  espocrm-db:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_DATABASE: espocrm
+      MYSQL_USER: espocrm
+      MYSQL_PASSWORD: espocrm_password
+    volumes:
+      - espocrm-db-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "espocrm", "-pespocrm_password"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # ---------------------------------------------------------------------------
+  # InvenTree — Склад / Управление запасами (port 8092)
+  # OIDC: настроить в Admin → Social Applications → Add → OpenID Connect
+  #   Provider: openid_connect | Name: IAM Portal | Client ID: inventree
+  #   Secret: InvenTreeSecret2024 | Server URL: http://backend:8000
+  # Redirect URI: http://localhost:8092/accounts/oidc/login/callback/
+  # ---------------------------------------------------------------------------
+  inventree:
+    image: inventree/inventree:stable
+    ports:
+      - "8092:8000"
+    depends_on:
+      inventree-db:
+        condition: service_healthy
+    volumes:
+      - inventree-data:/home/inventree/data
+      - ./inventree/config.yaml:/home/inventree/data/config.yaml:ro
+    environment:
+      INVENTREE_DB_ENGINE: postgresql
+      INVENTREE_DB_NAME: inventree
+      INVENTREE_DB_USER: inventree
+      INVENTREE_DB_PASSWORD: inventree_password
+      INVENTREE_DB_HOST: inventree-db
+      INVENTREE_ADMIN_USER: admin
+      INVENTREE_ADMIN_EMAIL: admin@company.ru
+      INVENTREE_ADMIN_PASSWORD: admin_password
+      INVENTREE_SITE_URL: "http://localhost:8092"
+      INVENTREE_DEBUG: "true"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/api/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # One-shot init: configure OIDC social app in InvenTree
+  inventree-setup:
+    image: inventree/inventree:stable
+    restart: "no"
+    depends_on:
+      inventree:
+        condition: service_healthy
+    volumes:
+      - inventree-data:/home/inventree/data
+      - ./inventree/config.yaml:/home/inventree/data/config.yaml:ro
+      - ./inventree/setup_oidc.py:/tmp/setup_oidc.py:ro
+    command: >
+      sh -c "cd /home/inventree/src/backend/InvenTree && python manage.py shell < /tmp/setup_oidc.py"
+    environment:
+      INVENTREE_DB_ENGINE: postgresql
+      INVENTREE_DB_NAME: inventree
+      INVENTREE_DB_USER: inventree
+      INVENTREE_DB_PASSWORD: inventree_password
+      INVENTREE_DB_HOST: inventree-db
+
+  inventree-db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: inventree
+      POSTGRES_USER: inventree
+      POSTGRES_PASSWORD: inventree_password
+    volumes:
+      - inventree-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U inventree"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ---------------------------------------------------------------------------
+  # Roundcube — Корпоративная почта (port 8093)
+  # OIDC/OAuth2: настроен через config.inc.php — работает сразу
+  # Redirect URI: http://localhost:8093/
+  # IMAP: Dovecot с валидацией OAuth2 токенов через IAM userinfo
+  # ---------------------------------------------------------------------------
+  roundcube:
+    image: roundcube/roundcubemail:latest
+    ports:
+      - "8093:80"
+    depends_on:
+      roundcube-db:
+        condition: service_healthy
+      dovecot:
+        condition: service_started
+    volumes:
+      - ./roundcube/config.inc.php:/var/roundcube/config/config.inc.php:ro
+
+  roundcube-db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: roundcube
+      POSTGRES_USER: roundcube
+      POSTGRES_PASSWORD: roundcube_password
+    volumes:
+      - roundcube-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U roundcube"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  dovecot:
+    image: dovecot/dovecot:2.3
+    volumes:
+      - ./dovecot/dovecot.conf:/etc/dovecot/dovecot.conf:ro
+      - ./dovecot/dovecot-oauth2.conf.ext:/etc/dovecot/dovecot-oauth2.conf.ext:ro
+      - dovecot-mail:/var/mail/vhosts
+
 volumes:
   pgdata:
   odoo-data:
@@ -194,3 +378,10 @@ volumes:
   nextcloud-data:
   nextcloud-pgdata:
   nginx-certs:
+  grafana-data:
+  espocrm-data:
+  espocrm-db-data:
+  inventree-data:
+  inventree-pgdata:
+  roundcube-pgdata:
+  dovecot-mail:
