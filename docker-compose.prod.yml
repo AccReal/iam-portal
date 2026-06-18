@@ -96,7 +96,10 @@ services:
       INVENTREE_DB_USER: inventree
       INVENTREE_DB_PASSWORD: inventree_password
       INVENTREE_DB_HOST: inventree-db
-    command: invoke update
+      # Без SITE_URL Django падает на "No ALLOWED_HOSTS specified".
+      INVENTREE_SITE_URL: https://inventree.${DOMAIN}
+      INVENTREE_DEBUG: "true"
+    command: invoke migrate
 
   inventree:
     depends_on:
@@ -113,6 +116,9 @@ services:
     environment:
       # server_url для OIDC discovery — публичный домен (резолвится на Caddy)
       IAM_SERVER_URL: https://${DOMAIN}
+      # SITE_URL нужен и здесь, иначе manage.py shell падает на ALLOWED_HOSTS
+      INVENTREE_SITE_URL: https://inventree.${DOMAIN}
+      INVENTREE_DEBUG: "true"
 
   # --- Roundcube: browser authorize + redirect URI ------------------------
   roundcube:
