@@ -1,0 +1,54 @@
+# Caddyfile — обратный прокси с автоматическим HTTPS (Let's Encrypt).
+#
+# {$DOMAIN} подставляется из .env (например 186-246-27-174.sslip.io).
+# Caddy сам получает и продлевает TLS-сертификаты для каждого хоста,
+# поэтому браузер не ругается, а Nextcloud получает валидный HTTPS.
+#
+# Требуется: входящие порты 80 и 443 открыты (firewall Timeweb) — порт 80
+# нужен для ACME HTTP-01 challenge, 443 — для самого HTTPS.
+
+{
+	email {$ACME_EMAIL}
+}
+
+# --- Главный портал + OIDC-провайдер -------------------------------------
+# Один домен обслуживает и SPA (Vue), и API/OIDC бэкенда.
+{$DOMAIN} {
+	# Server-side и browser-side эндпоинты бэкенда
+	@backend path /api/* /oauth/* /.well-known/* /health /docs /redoc /openapi.json
+	handle @backend {
+		reverse_proxy backend:8000
+	}
+	# Всё остальное — фронтенд (Vite)
+	handle {
+		reverse_proxy frontend:3000
+	}
+}
+
+# --- Relying Parties (каждому свой поддомен) -----------------------------
+odoo.{$DOMAIN} {
+	reverse_proxy odoo:8069
+}
+
+nextcloud.{$DOMAIN} {
+	# Nextcloud служебные редиректы (убирают предупреждения в админке)
+	redir /.well-known/carddav /remote.php/dav 301
+	redir /.well-known/caldav /remote.php/dav 301
+	reverse_proxy nextcloud:80
+}
+
+grafana.{$DOMAIN} {
+	reverse_proxy grafana:3000
+}
+
+crm.{$DOMAIN} {
+	reverse_proxy espocrm:80
+}
+
+inventree.{$DOMAIN} {
+	reverse_proxy inventree:8000
+}
+
+mail.{$DOMAIN} {
+	reverse_proxy roundcube:80
+}

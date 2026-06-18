@@ -2,6 +2,8 @@
 One-shot script: configure OIDC social app in InvenTree and link IAM users.
 Run via: python manage.py shell < setup_oidc.py
 """
+import os
+
 from allauth.socialaccount.models import SocialApp, SocialAccount
 from django.contrib.auth.models import User
 
@@ -10,7 +12,9 @@ PROVIDER_ID = "iam-portal"   # Used in the callback URL: /accounts/iam-portal/lo
 NAME = "IAM Portal"
 CLIENT_ID = "inventree"
 SECRET = "InvenTreeSecret2024"
-SERVER_URL = "http://backend:8000"
+# OIDC discovery base. In production it's the public issuer (https://<domain>),
+# which resolves to Caddy inside the docker network; locally — backend:8000.
+SERVER_URL = os.getenv("IAM_SERVER_URL", "http://backend:8000")
 
 # IAM user UUID -> email mapping (must match IAM DB)
 IAM_USERS = [
