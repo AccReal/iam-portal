@@ -82,9 +82,9 @@ REFRESH_TOKEN_EXPIRE_DAYS=7
 # Password Vault
 VAULT_MASTER_KEY=$VAULT
 
-# MFA
+# MFA — true: все обязаны настроить TOTP при первом входе
 MFA_ISSUER=IAM Portal
-MFA_REQUIRED=false
+MFA_REQUIRED=true
 
 # App
 APP_NAME=Единый портал доступа
