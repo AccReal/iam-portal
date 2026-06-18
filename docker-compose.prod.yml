@@ -77,14 +77,37 @@ services:
       ESPOCRM_SITE_URL: https://crm.${DOMAIN}
       OIDC_AUTH_ENDPOINT: https://${DOMAIN}/oauth/authorize
 
-  # --- InvenTree: публичный site URL + trusted origins + авто-миграции -----
+  # --- InvenTree: миграции отдельным разовым шагом ------------------------
+  # На свежей БД сервер выходит с "INVE-W8: Database Migrations required".
+  # Прогоняем миграции один раз в inventree-migrate, а сам сервер стартует
+  # быстро (без авто-update на каждом старте) и сразу отдаёт API → healthy.
+  inventree-migrate:
+    image: inventree/inventree:stable
+    restart: "no"
+    depends_on:
+      inventree-db:
+        condition: service_healthy
+    volumes:
+      - inventree-data:/home/inventree/data
+      - ./inventree/config.yaml:/home/inventree/data/config.yaml:ro
+    environment:
+      INVENTREE_DB_ENGINE: postgresql
+      INVENTREE_DB_NAME: inventree
+      INVENTREE_DB_USER: inventree
+      INVENTREE_DB_PASSWORD: inventree_password
+      INVENTREE_DB_HOST: inventree-db
+    command: invoke update
+
   inventree:
+    depends_on:
+      inventree-migrate:
+        condition: service_completed_successfully
     environment:
       INVENTREE_SITE_URL: https://inventree.${DOMAIN}
       INVENTREE_TRUSTED_ORIGINS: https://inventree.${DOMAIN}
-      # На свежей БД InvenTree-сервер выходит с "INVE-W8: Database Migrations
-      # required". Этот флаг заставляет его прогнать миграции при старте.
-      INVENTREE_AUTO_UPDATE: "true"
+    healthcheck:
+      # дать серверу время на первый запуск после миграций
+      start_period: 180s
 
   inventree-setup:
     environment:
