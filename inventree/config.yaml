@@ -1,5 +1,11 @@
 # InvenTree configuration — IAM Portal OIDC integration
 
+# Разрешённые хосты. InvenTree за reverse-proxy (Caddy), который и так
+# пропускает только нужный домен, поэтому здесь безопасно разрешить все —
+# иначе внутренний healthcheck (Host: localhost) отклоняется как DisallowedHost.
+allowed_hosts:
+  - '*'
+
 # Enable the OpenID Connect social account provider
 social_backends:
   - allauth.socialaccount.providers.openid_connect
