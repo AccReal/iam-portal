@@ -8,6 +8,7 @@ Run to update application URLs/secrets/redirect_uris on an existing DB:
     python seed.py --update-apps
 """
 import asyncio
+import os
 import sys
 import uuid
 
@@ -47,6 +48,21 @@ USER_OLGA_ID   = uuid.UUID("30000000-0000-0000-0000-000000000004")
 # Application definitions — source of truth for URLs and OAuth config
 # ---------------------------------------------------------------------------
 
+def _base(env_key: str, default: str) -> str:
+    """Read a service's public base URL from env (localhost default for dev)."""
+    return os.getenv(env_key, default).rstrip("/")
+
+
+# Public base URLs per service. In production deploy.sh sets these env vars to
+# https://<service>.<domain>; locally they fall back to the docker-compose ports.
+CRM_URL       = _base("CRM_PUBLIC_URL", "http://localhost:8090")
+MAIL_URL      = _base("MAIL_PUBLIC_URL", "http://localhost:8093")
+WAREHOUSE_URL = _base("INVENTREE_PUBLIC_URL", "http://localhost:8092")
+REPORTS_URL   = _base("GRAFANA_PUBLIC_URL", "http://localhost:8091")
+ODOO_URL      = _base("ODOO_PUBLIC_URL", "http://localhost:8069")
+NEXTCLOUD_URL = _base("NEXTCLOUD_PUBLIC_URL", "https://localhost:8443")
+
+
 def build_apps() -> list[dict]:
     """Return application upsert data with current secrets and URLs."""
     return [
@@ -56,12 +72,12 @@ def build_apps() -> list[dict]:
             id=APP_CRM_ID,
             name="CRM Система",
             description="Управление клиентами и продажами",
-            app_url="http://localhost:8090",
+            app_url=CRM_URL,
             icon="👥",
             integration_type="oauth",
             client_id="espocrm",
             client_secret_hash=hash_token("EspoCRMSecret2024"),
-            redirect_uris=["http://localhost:8090/oauth-callback.php", "http://localhost:8090/?entryPoint=oauthCallback"],
+            redirect_uris=[f"{CRM_URL}/oauth-callback.php", f"{CRM_URL}/?entryPoint=oauthCallback"],
             allowed_scopes="openid profile email",
             is_active=True,
             is_honeypot=False,
@@ -72,12 +88,12 @@ def build_apps() -> list[dict]:
             id=APP_MAIL_ID,
             name="Корпоративная почта",
             description="Веб-почта компании (Roundcube + Dovecot)",
-            app_url="http://localhost:8093",
+            app_url=MAIL_URL,
             icon="✉️",
             integration_type="oauth",
             client_id="roundcube",
             client_secret_hash=hash_token("RoundcubeSecret2024"),
-            redirect_uris=["http://localhost:8093/index.php/login/oauth", "http://localhost:8093/"],
+            redirect_uris=[f"{MAIL_URL}/index.php/login/oauth", f"{MAIL_URL}/"],
             allowed_scopes="openid profile email",
             is_active=True,
             is_honeypot=False,
@@ -103,12 +119,12 @@ def build_apps() -> list[dict]:
             id=APP_WAREHOUSE_ID,
             name="Склад",
             description="Управление запасами и складской учёт",
-            app_url="http://localhost:8092",
+            app_url=WAREHOUSE_URL,
             icon="📦",
             integration_type="oauth",
             client_id="inventree",
             client_secret_hash=hash_token("InvenTreeSecret2024"),
-            redirect_uris=["http://localhost:8092/accounts/iam-portal/login/callback/"],
+            redirect_uris=[f"{WAREHOUSE_URL}/accounts/iam-portal/login/callback/"],
             allowed_scopes="openid profile email",
             is_active=True,
             is_honeypot=False,
@@ -119,12 +135,12 @@ def build_apps() -> list[dict]:
             id=APP_REPORTS_ID,
             name="Отчёты",
             description="Аналитика и дашборды (Grafana)",
-            app_url="http://localhost:8091",
+            app_url=REPORTS_URL,
             icon="📊",
             integration_type="oauth",
             client_id="grafana",
             client_secret_hash=hash_token("GrafanaOAuthSecret2024"),
-            redirect_uris=["http://localhost:8091/login/generic_oauth"],
+            redirect_uris=[f"{REPORTS_URL}/login/generic_oauth"],
             allowed_scopes="openid profile email",
             is_active=True,
             is_honeypot=False,
@@ -150,12 +166,12 @@ def build_apps() -> list[dict]:
             id=APP_ODOO_ID,
             name="Odoo ERP",
             description="Корпоративная ERP-система",
-            app_url="http://localhost:8069/web",
+            app_url=f"{ODOO_URL}/web",
             icon="🏢",
             integration_type="oauth",
             client_id="odoo",
             client_secret_hash="8954aad775df76eac9e7ab729095849a977959883dee13e7cbfd9692f06c4e7a",
-            redirect_uris=["http://localhost:8069/auth_oauth/signin", "http://localhost:8069/iam/sso/callback"],
+            redirect_uris=[f"{ODOO_URL}/auth_oauth/signin", f"{ODOO_URL}/iam/sso/callback"],
             allowed_scopes="openid profile email roles",
             is_active=True,
             is_honeypot=False,
@@ -166,12 +182,12 @@ def build_apps() -> list[dict]:
             id=APP_NEXTCLOUD_ID,
             name="Nextcloud",
             description="Корпоративное облачное хранилище",
-            app_url="https://localhost:8443",
+            app_url=NEXTCLOUD_URL,
             icon="☁️",
             integration_type="oauth",
             client_id="nextcloud",
             client_secret_hash="b673c29b8f8a4bbdcc5da502d8b2feb14b0edba0d206ae22ae4951a1ff24fe5e",
-            redirect_uris=["https://localhost:8443/apps/user_oidc/code"],
+            redirect_uris=[f"{NEXTCLOUD_URL}/apps/user_oidc/code"],
             allowed_scopes="openid profile email",
             is_active=True,
             is_honeypot=False,

@@ -1,0 +1,99 @@
+# docker-compose.prod.yml — production overlay.
+#
+# Запускается поверх docker-compose.yml:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+# (это делает deploy.sh автоматически).
+#
+# Что меняет:
+#   * добавляет Caddy — единая точка входа на портах 80/443 с авто-HTTPS;
+#   * отключает старый self-signed nginx (его роль берёт Caddy);
+#   * переводит все URL сервисов с localhost на публичный домен из .env (${DOMAIN});
+#   * выключает --reload у бэкенда и включает авто-сидинг (SEED_DATA=true).
+#
+# Все ${DOMAIN}/${ACME_EMAIL} берутся из .env, который генерирует deploy.sh.
+
+services:
+  # --- Reverse proxy + автоматический HTTPS -------------------------------
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    environment:
+      DOMAIN: ${DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL:-admin@example.com}
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      default:
+        # Чтобы контейнеры-RP (InvenTree, Nextcloud), которым OIDC-discovery
+        # отдаёт публичный https://${DOMAIN}, резолвили его ВНУТРИ docker-сети
+        # на Caddy, а не ходили в интернет и обратно (hairpin).
+        aliases:
+          - ${DOMAIN}
+
+  # --- Backend: прод-режим (без --reload) + авто-миграции/сидинг ----------
+  backend:
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    environment:
+      SEED_DATA: "true"
+
+  # --- Frontend: разрешить хост sslip.io за прокси ------------------------
+  frontend:
+    environment:
+      VITE_ALLOWED_HOSTS: ${DOMAIN}
+
+  # --- Старый nginx больше не нужен (заменён Caddy) -----------------------
+  nginx:
+    profiles: ["legacy"]
+
+  # --- Odoo: доверять заголовкам прокси (https) --------------------------
+  odoo:
+    command: odoo --proxy-mode --without-demo=all -d odoo -i iam_sso
+
+  # --- Nextcloud: доверенный домен/прокси = поддомен ----------------------
+  nextcloud:
+    environment:
+      NEXTCLOUD_TRUSTED_DOMAINS: nextcloud.${DOMAIN}
+      OVERWRITEHOST: nextcloud.${DOMAIN}
+      OVERWRITECLIURL: https://nextcloud.${DOMAIN}
+      TRUSTED_PROXIES: 172.16.0.0/12
+
+  # --- Grafana: публичный root URL + browser authorize URL ----------------
+  grafana:
+    environment:
+      GF_SERVER_ROOT_URL: https://grafana.${DOMAIN}
+      GF_AUTH_GENERIC_OAUTH_AUTH_URL: https://${DOMAIN}/oauth/authorize
+
+  # --- EspoCRM: публичный site URL + browser authorize URL ----------------
+  espocrm:
+    environment:
+      ESPOCRM_SITE_URL: https://crm.${DOMAIN}
+      OIDC_AUTH_ENDPOINT: https://${DOMAIN}/oauth/authorize
+
+  # --- InvenTree: публичный site URL + trusted origins --------------------
+  inventree:
+    environment:
+      INVENTREE_SITE_URL: https://inventree.${DOMAIN}
+      INVENTREE_TRUSTED_ORIGINS: https://inventree.${DOMAIN}
+
+  inventree-setup:
+    environment:
+      # server_url для OIDC discovery — публичный домен (резолвится на Caddy)
+      IAM_SERVER_URL: https://${DOMAIN}
+
+  # --- Roundcube: browser authorize + redirect URI ------------------------
+  roundcube:
+    environment:
+      OAUTH_AUTH_URI: https://${DOMAIN}/oauth/authorize
+      OAUTH_REDIRECT_URI: https://mail.${DOMAIN}/index.php/login/oauth
+
+volumes:
+  caddy-data:
+  caddy-config:
