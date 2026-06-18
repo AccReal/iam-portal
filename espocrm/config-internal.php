@@ -3,7 +3,8 @@ return [
   'authenticationMethod' => 'Oidc',
   'oidcClientId' => 'espocrm',
   'oidcClientSecret' => 'EspoCRMSecret2024',
-  'oidcAuthorizationEndpoint' => getenv('OIDC_AUTH_ENDPOINT') ?: 'http://localhost:8000/oauth/authorize',
+  // На проде deploy.sh заменяет localhost:8000 -> публичный домен через sed.
+  'oidcAuthorizationEndpoint' => 'http://localhost:8000/oauth/authorize',
   'oidcTokenEndpoint' => 'http://backend:8000/oauth/token',
   'oidcJwksEndpoint' => 'http://backend:8000/.well-known/jwks.json',
   'oidcUsernameClaim' => 'email',

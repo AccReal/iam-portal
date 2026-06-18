@@ -122,11 +122,18 @@ fi
 
 export DOMAIN
 
-# --- 4. Odoo: подставить публичный домен в статический OIDC-конфиг аддона ---
+# --- 4. Подставить публичный домен в статические конфиги сервисов ----------
+# (PHP-FPM/Apache не пробрасывают env в getenv(), поэтому правим файлы напрямую.)
+# browser-facing localhost:8000 -> https://<домен>; self-URL -> поддомен.
 ODOO_XML="demo-apps/odoo-addons/iam_sso/data/oauth_provider.xml"
-if [ -f "$ODOO_XML" ]; then
-	sed -i "s#http://localhost:8000#https://$DOMAIN#g" "$ODOO_XML"
+[ -f "$ODOO_XML" ] && sed -i "s#http://localhost:8000#https://$DOMAIN#g" "$ODOO_XML"
+
+if [ -f roundcube/config.inc.php ]; then
+	sed -i "s#http://localhost:8000#https://$DOMAIN#g" roundcube/config.inc.php
+	sed -i "s#http://localhost:8093#https://mail.$DOMAIN#g" roundcube/config.inc.php
 fi
+
+[ -f espocrm/config-internal.php ] && sed -i "s#http://localhost:8000#https://$DOMAIN#g" espocrm/config-internal.php
 
 # --- 5. Исполняемый бит у entrypoint ---------------------------------------
 # bind-mount ./backend:/app перекрывает права из образа — гарантируем +x,

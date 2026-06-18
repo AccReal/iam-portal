@@ -71,11 +71,10 @@ services:
       GF_SERVER_ROOT_URL: https://grafana.${DOMAIN}
       GF_AUTH_GENERIC_OAUTH_AUTH_URL: https://${DOMAIN}/oauth/authorize
 
-  # --- EspoCRM: публичный site URL + browser authorize URL ----------------
+  # --- EspoCRM: публичный site URL (OIDC-endpoint правит deplo.sh через sed) -
   espocrm:
     environment:
       ESPOCRM_SITE_URL: https://crm.${DOMAIN}
-      OIDC_AUTH_ENDPOINT: https://${DOMAIN}/oauth/authorize
 
   # --- InvenTree: миграции отдельным разовым шагом ------------------------
   # На свежей БД сервер выходит с "INVE-W8: Database Migrations required".
@@ -120,11 +119,7 @@ services:
       INVENTREE_SITE_URL: https://inventree.${DOMAIN}
       INVENTREE_DEBUG: "true"
 
-  # --- Roundcube: browser authorize + redirect URI ------------------------
-  roundcube:
-    environment:
-      OAUTH_AUTH_URI: https://${DOMAIN}/oauth/authorize
-      OAUTH_REDIRECT_URI: https://mail.${DOMAIN}/index.php/login/oauth
+  # (Roundcube OIDC-URL правит deploy.sh через sed — env PHP-FPM не видит)
 
 volumes:
   caddy-data:

@@ -31,15 +31,15 @@ $config['oauth_provider_name'] = 'IAM Portal';
 $config['oauth_client_id']     = 'roundcube';
 $config['oauth_client_secret'] = 'RoundcubeSecret2024';
 
-// Browser-accessible (authorization redirect) — public домен на проде,
-// localhost локально (значения приходят из docker-compose через env).
-$config['oauth_auth_uri']     = getenv('OAUTH_AUTH_URI') ?: 'http://localhost:8000/oauth/authorize';
+// Browser-accessible (authorization redirect). На проде deploy.sh заменяет
+// localhost:8000 -> публичный домен, localhost:8093 -> mail.<домен> через sed.
+$config['oauth_auth_uri']     = 'http://localhost:8000/oauth/authorize';
 // Server-to-server (token exchange & userinfo) — внутри docker-сети
 $config['oauth_token_uri']    = 'http://backend:8000/oauth/token';
 $config['oauth_identity_uri'] = 'http://backend:8000/oauth/userinfo';
 
 $config['oauth_scope']        = 'openid profile email';
-$config['oauth_redirect_uri'] = getenv('OAUTH_REDIRECT_URI') ?: 'http://localhost:8093/index.php/login/oauth';
+$config['oauth_redirect_uri'] = 'http://localhost:8093/index.php/login/oauth';
 
 // Map IAM claims to Roundcube identity
 $config['oauth_identity_fields'] = ['email'];
