@@ -132,8 +132,7 @@ if [ -f roundcube/config.inc.php ]; then
 	sed -i "s#http://localhost:8000#https://$DOMAIN#g" roundcube/config.inc.php
 	sed -i "s#http://localhost:8093#https://mail.$DOMAIN#g" roundcube/config.inc.php
 fi
-
-[ -f espocrm/config-internal.php ] && sed -i "s#http://localhost:8000#https://$DOMAIN#g" espocrm/config-internal.php
+# EspoCRM ставится с нуля, OIDC включается в его админке (config не монтируем).
 
 # --- 5. Исполняемый бит у entrypoint ---------------------------------------
 # bind-mount ./backend:/app перекрывает права из образа — гарантируем +x,
