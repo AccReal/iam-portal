@@ -235,7 +235,9 @@ services:
         condition: service_healthy
     volumes:
       - espocrm-data:/var/www/html/data
-      - ./espocrm/config-internal.php:/var/www/html/data/config-internal.php
+      # NB: НЕ монтируем сюда config-internal.php — он помечает isInstalled=true,
+      # и EspoCRM не создаёт таблицы на свежей БД. Даём установиться самому из
+      # env, OIDC включается потом в Администрирование → Аутентификация.
     environment:
       ESPOCRM_DATABASE_PLATFORM: Mysql
       ESPOCRM_DATABASE_HOST: espocrm-db
