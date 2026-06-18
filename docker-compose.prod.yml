@@ -77,11 +77,14 @@ services:
       ESPOCRM_SITE_URL: https://crm.${DOMAIN}
       OIDC_AUTH_ENDPOINT: https://${DOMAIN}/oauth/authorize
 
-  # --- InvenTree: публичный site URL + trusted origins --------------------
+  # --- InvenTree: публичный site URL + trusted origins + авто-миграции -----
   inventree:
     environment:
       INVENTREE_SITE_URL: https://inventree.${DOMAIN}
       INVENTREE_TRUSTED_ORIGINS: https://inventree.${DOMAIN}
+      # На свежей БД InvenTree-сервер выходит с "INVE-W8: Database Migrations
+      # required". Этот флаг заставляет его прогнать миграции при старте.
+      INVENTREE_AUTO_UPDATE: "true"
 
   inventree-setup:
     environment:
