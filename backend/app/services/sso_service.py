@@ -77,7 +77,13 @@ async def get_user_apps(db: AsyncSession, user: User) -> list[dict]:
     rows = result.all()
 
     apps = []
+    seen: set = set()
     for perm, app in rows:
+        # Defensive de-dup: a role may have more than one permission row for the
+        # same application (legacy seed data) — show each application only once.
+        if app.id in seen:
+            continue
+        seen.add(app.id)
         apps.append({
             "id": str(app.id),
             "name": app.name,

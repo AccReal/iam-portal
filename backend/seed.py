@@ -300,11 +300,9 @@ async def seed():
             RolePermission(role_id=ROLE_MANAGER_ID,    application_id=APP_NEXTCLOUD_ID, can_read=True, can_write=True,  can_export=False),
             RolePermission(role_id=ROLE_ACCOUNTANT_ID, application_id=APP_NEXTCLOUD_ID, can_read=True, can_write=True,  can_export=False),
             RolePermission(role_id=ROLE_USER_ID,       application_id=APP_NEXTCLOUD_ID, can_read=True, can_write=False, can_export=False),
-            # Склад — admin, manager
-            RolePermission(role_id=ROLE_ADMIN_ID,   application_id=APP_WAREHOUSE_ID, can_read=True, can_write=True,  can_export=True),
+            # Склад — manager (admin уже добавлен выше)
             RolePermission(role_id=ROLE_MANAGER_ID, application_id=APP_WAREHOUSE_ID, can_read=True, can_write=True,  can_export=False),
-            # Отчёты/Grafana — admin, manager
-            RolePermission(role_id=ROLE_ADMIN_ID,   application_id=APP_REPORTS_ID, can_read=True, can_write=True,  can_export=True),
+            # Отчёты/Grafana — manager (admin уже добавлен выше)
             RolePermission(role_id=ROLE_MANAGER_ID, application_id=APP_REPORTS_ID, can_read=True, can_write=False, can_export=True),
         ]
         db.add_all(permissions)
